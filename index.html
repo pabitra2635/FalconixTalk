@@ -101,6 +101,11 @@
 
         /* Default desktop view */
         @media (min-width: 768px) {
+            body {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
             #app-container {
                  max-height: 95vh;
             }
@@ -110,7 +115,7 @@
         }
     </style>
 </head>
-<body class="h-screen flex items-center justify-center">
+<body>
 
     <!-- Theme toggling script to prevent flash of unstyled content (FOUC) -->
     <script>
@@ -225,7 +230,6 @@
               match /chats/{chatPartnerId} {
                 allow read, write: if request.auth.uid == userId;
               }
-              // NEW: Allow users to manage their unread message counts
               match /unreadCounts/{partnerId} {
                 allow read, write: if request.auth.uid == userId;
               }
@@ -342,7 +346,7 @@
             await fetchAllUsersForSearch();
             listenToUnreadCounts();
             listenToChatList();
-            selectChat('public-chat', 'Public Chat', "https://placehold.co/40x40/4CAF50/ffffff?text=GC");
+            selectChat('public-chat', 'Public Chat', "https://placehold.co/40x40/4CAF50/ffffff?text=GC", false);
         }
 
         function handleUserLogout() {
@@ -400,7 +404,6 @@
                 snapshot.forEach(doc => {
                     unreadCounts[doc.id] = doc.data().count;
                 });
-                // Redraw chat list with new counts if not searching
                 if (userSearchInput.value.trim() === '') {
                     listenToChatList();
                 }
@@ -488,7 +491,7 @@
             return item;
         }
 
-        async function selectChat(partnerId, partnerName, partnerPic) {
+        async function selectChat(partnerId, partnerName, partnerPic, activateChatView = true) {
             if (selectedChatPartnerId === partnerId && appContainer.classList.contains('chat-view-active')) return;
 
             selectedChatPartnerId = partnerId;
@@ -514,7 +517,6 @@
             if (partnerId === 'public-chat') {
                 chatPartnerStatus.textContent = 'Everyone is here';
             } else {
-                // Clear unread count when opening a chat
                 const unreadCountRef = doc(db, `artifacts/${appId}/users/${userId}/unreadCounts/${partnerId}`);
                 await setDoc(unreadCountRef, { count: 0 });
 
@@ -529,7 +531,7 @@
             
             setupRealtimeMessages();
 
-            if (window.innerWidth < 768) {
+            if (window.innerWidth < 768 && activateChatView) {
                 appContainer.classList.add('chat-view-active');
             }
         }
@@ -577,7 +579,6 @@
                     await updateDoc(partnerChatListRef, { lastMessageTimestamp: serverTimestamp() });
                 }
                 
-                // Increment unread count for the recipient
                 await setDoc(partnerUnreadCountRef, { count: increment(1) }, { merge: true });
             }
             
@@ -651,10 +652,25 @@
             box.querySelector('#msg-box-ok').onclick = () => document.body.removeChild(box);
         }
         
-        // Back button for mobile
+        // Back button for mobile - REVISED LOGIC
         backButton.addEventListener('click', () => {
             appContainer.classList.remove('chat-view-active');
-            selectChat('public-chat', 'Public Chat', "https://placehold.co/40x40/4CAF50/ffffff?text=GC");
+            selectedChatPartnerId = null; // Deselect the current chat
+            
+            // Unsubscribe from listeners
+            if (unsubscribeMessages) unsubscribeMessages();
+            if (unsubscribePartnerStatus) unsubscribePartnerStatus();
+
+            // Reset the chat panel to its default state
+            chatHeaderName.textContent = 'Select a Chat';
+            chatPartnerStatus.textContent = '';
+            chatPartnerPic.src = DEFAULT_PROFILE_PIC;
+            messagesContainer.innerHTML = '';
+            messageInput.disabled = true;
+            sendButton.disabled = true;
+
+            // Redraw the user list to remove any highlighting
+            listenToChatList();
         });
 
         // Start the application

@@ -166,7 +166,12 @@
             </div>
             <!-- Search Bar -->
             <div class="p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-[#202C33] shadow-sm">
-                <input type="text" id="user-search-input" placeholder="Search to start a new chat" class="w-full p-2.5 rounded-lg bg-gray-100 dark:bg-[#2A3942] border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#25D366] transition duration-200">
+                <div class="relative flex items-center">
+                    <input type="text" id="user-search-input" placeholder="Search by name or email" class="w-full p-2.5 pr-10 rounded-lg bg-gray-100 dark:bg-[#2A3942] border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#25D366] transition duration-200">
+                    <button id="search-button" class="absolute right-0 top-0 h-full px-3 text-gray-500 hover:text-green-500 dark:hover:text-green-400">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"></path></svg>
+                    </button>
+                </div>
             </div>
             <!-- User/Chat List -->
             <div id="user-list" class="flex-grow overflow-y-auto chat-list"></div>
@@ -218,25 +223,38 @@
             measurementId: "G-GGQCH7PTCE"
         };
         
-        // --- Firestore Security Rules Reminder ---
+        // --- CRITICAL: Firestore Security Rules ---
+        // You MUST update your rules in the Firebase Console for messaging to work.
+        // Go to Firestore -> Rules, delete everything, and paste this:
         /*
         rules_version = '2';
         service cloud.firestore {
           match /databases/{database}/documents {
+            // Allow any logged-in user to read the public list of all users
             match /artifacts/{appId}/users/{userId} {
               allow read: if request.auth != null;
+              // Only a user can write to their own main profile document
               allow write: if request.auth.uid == userId;
-              
-              match /chats/{chatPartnerId} {
-                allow read, write: if request.auth.uid == userId;
-              }
-              match /unreadCounts/{partnerId} {
-                allow read, write: if request.auth.uid == userId;
-              }
             }
+
+            // Allow any logged-in user to create or update a chat entry in ANY user's list.
+            // This is required so a sender can add themselves to the receiver's chat list.
+            match /artifacts/{appId}/users/{userId}/chats/{partnerId} {
+              allow read, write: if request.auth != null;
+            }
+
+            // Allow any logged-in user to update the unread count in ANY user's list.
+            // This is required so the sender can notify the receiver of a new message.
+            match /artifacts/{appId}/users/{userId}/unreadCounts/{partnerId} {
+              allow read, write: if request.auth != null;
+            }
+
+            // Allow any logged-in user to send messages in the public chat
             match /artifacts/{appId}/public/data/messages/{messageId} {
                 allow read, write: if request.auth != null;
             }
+
+            // Allow only the two participants of a private chat to read or write messages
             match /chats/{chatId}/{document=**} {
               allow read, write: if request.auth.uid in chatId.split('_');
             }
@@ -271,6 +289,7 @@
         const chatPartnerPic = document.getElementById('chat-partner-pic');
         const logoutButton = document.getElementById('logout-button');
         const userSearchInput = document.getElementById('user-search-input');
+        const searchButton = document.getElementById('search-button');
         const userProfilePic = document.getElementById('user-profile-pic');
         const profilePictureUpload = document.getElementById('profile-picture-upload');
         const currentUserDisplayName = document.getElementById('current-user-display-name');
@@ -458,14 +477,21 @@
             }
         }
 
-        userSearchInput.addEventListener('input', (e) => {
-            const searchTerm = e.target.value.trim().toLowerCase();
+        function performSearch() {
+            const searchTerm = userSearchInput.value.trim().toLowerCase();
             if (searchTerm === '') {
                 listenToChatList();
             } else {
                 if (chatListListener) chatListListener();
                 const filtered = allUsersCache.filter(user => user.displayName.toLowerCase().includes(searchTerm) || user.email.toLowerCase().includes(searchTerm));
                 displaySearchResults(filtered);
+            }
+        }
+
+        searchButton.addEventListener('click', performSearch);
+        userSearchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                performSearch();
             }
         });
 
@@ -509,9 +535,7 @@
             if (userSearchInput.value.trim() === '') {
                 listenToChatList();
             } else {
-                const searchTerm = userSearchInput.value.trim().toLowerCase();
-                const filtered = allUsersCache.filter(user => user.displayName.toLowerCase().includes(searchTerm) || user.email.toLowerCase().includes(searchTerm));
-                displaySearchResults(filtered);
+                performSearch();
             }
             
             if (partnerId === 'public-chat') {
@@ -652,16 +676,14 @@
             box.querySelector('#msg-box-ok').onclick = () => document.body.removeChild(box);
         }
         
-        // Back button for mobile - REVISED LOGIC
+        // Back button for mobile
         backButton.addEventListener('click', () => {
             appContainer.classList.remove('chat-view-active');
-            selectedChatPartnerId = null; // Deselect the current chat
+            selectedChatPartnerId = null; 
             
-            // Unsubscribe from listeners
             if (unsubscribeMessages) unsubscribeMessages();
             if (unsubscribePartnerStatus) unsubscribePartnerStatus();
 
-            // Reset the chat panel to its default state
             chatHeaderName.textContent = 'Select a Chat';
             chatPartnerStatus.textContent = '';
             chatPartnerPic.src = DEFAULT_PROFILE_PIC;
@@ -669,7 +691,6 @@
             messageInput.disabled = true;
             sendButton.disabled = true;
 
-            // Redraw the user list to remove any highlighting
             listenToChatList();
         });
 

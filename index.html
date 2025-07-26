@@ -66,13 +66,13 @@
             #app-container .md\\:flex {
                 flex-direction: column; /* Stack sidebar and chat area vertically */
             }
-            #app-container .w-1\\/3 {
+            #app-container .w-full.md\\:w-1\\/3 {
                 width: 100%; /* Sidebar takes full width on small screens */
                 height: 50%; /* Adjust height as needed, or make it collapsible */
                 border-right: none; /* Remove right border */
                 border-bottom: 1px solid #d1d5db; /* Add bottom border */
             }
-            #app-container .md\\:w-2\\/3 {
+            #app-container .flex-grow.md\\:w-2\\/3 {
                 width: 100%; /* Chat area takes full width on small screens */
                 height: 50%; /* Adjust height as needed */
             }
@@ -101,34 +101,10 @@
         <p class="ml-4 text-lg text-gray-700">Loading...</p>
     </div>
 
-    <!-- Login/OTP Screen -->
+    <!-- Login Screen (Google Auth Only) -->
     <div id="auth-container" class="bg-white p-8 rounded-lg shadow-xl max-w-md w-full text-center">
         <h2 class="text-2xl font-bold mb-6 text-green-600">Login to FalconixTalk</h2>
         
-        <!-- Phone Number Login Section -->
-        <div class="mb-4">
-            <input type="tel" id="phone-number-input" placeholder="Enter phone number (e.g., +11234567890)"
-                   class="w-full p-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500">
-        </div>
-        <div id="recaptcha-container" class="mb-4 flex justify-center"></div>
-        <button id="send-otp-button"
-                class="w-full bg-green-500 hover:bg-green-600 text-white p-3 rounded-md font-semibold transition duration-300 ease-in-out transform hover:scale-105">
-            Send OTP
-        </button>
-
-        <div id="otp-section" class="mt-6 hidden">
-            <div class="mb-4">
-                <input type="text" id="otp-input" placeholder="Enter OTP"
-                       class="w-full p-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500">
-            </div>
-            <button id="verify-otp-button"
-                    class="w-full bg-green-500 hover:bg-green-600 text-white p-3 rounded-md font-semibold transition duration-300 ease-in-out transform hover:scale-105">
-                Verify OTP
-            </button>
-        </div>
-
-        <div class="my-6 text-gray-500">OR</div>
-
         <!-- Google Sign-In Button -->
         <button id="google-sign-in-button"
                 class="w-full bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-md font-semibold flex items-center justify-center transition duration-300 ease-in-out transform hover:scale-105">
@@ -153,7 +129,7 @@
                 </div>
             </div>
             <div class="p-4 border-b border-gray-300">
-                <input type="text" id="user-search-input" placeholder="Search by phone number or name" class="w-full p-2 rounded-md bg-white border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500">
+                <input type="text" id="user-search-input" placeholder="Search by name or email" class="w-full p-2 rounded-md bg-white border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500">
             </div>
             <!-- User List / Search Results -->
             <div id="user-list" class="flex-grow overflow-y-auto chat-list">
@@ -194,7 +170,7 @@
     <script type="module">
         // Import only the necessary core Firebase modules
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
-        import { getAuth, RecaptchaVerifier, signInWithPhoneNumber, onAuthStateChanged, signOut, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
+        import { getAuth, onAuthStateChanged, signOut, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
         import { getFirestore, collection, addDoc, query, where, onSnapshot, serverTimestamp, setDoc, doc, getDoc, getDocs } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
 
         // Your web app's Firebase configuration
@@ -215,13 +191,11 @@
         let db;
         let auth;
         let userId = null;
-        let phoneNumber = null; // Store user's phone number
-        let email = null; // Store user's email if logged in via Google
+        let userName = null; // Store user's display name from Google
+        let userEmail = null; // Store user's email
         let isAuthReady = false;
-        let confirmationResult = null; // Used for OTP verification
         let selectedChatPartnerId = 'public-chat'; // Default to public chat
-        let selectedChatPartnerPhoneNumber = 'Public Chat'; // Default for display
-        let selectedChatPartnerEmail = null; // Default for display
+        let selectedChatPartnerDisplayName = 'Public Chat'; // Default for display
         let unsubscribeMessages = null; // To unsubscribe from previous chat listener
         let allUsers = []; // Cache all users for search functionality
 
@@ -229,12 +203,6 @@
         const loadingOverlay = document.getElementById('loading-overlay');
         const authContainer = document.getElementById('auth-container');
         const appContainer = document.getElementById('app-container');
-        const phoneNumberInput = document.getElementById('phone-number-input');
-        const recaptchaContainer = document.getElementById('recaptcha-container');
-        const sendOtpButton = document.getElementById('send-otp-button');
-        const otpSection = document.getElementById('otp-section');
-        const otpInput = document.getElementById('otp-input');
-        const verifyOtpButton = document.getElementById('verify-otp-button');
         const googleSignInButton = document.getElementById('google-sign-in-button');
         const authMessage = document.getElementById('auth-message');
         const messagesContainer = document.getElementById('messages-container');
@@ -271,30 +239,12 @@
                 db = getFirestore(app);
                 auth = getAuth(app);
 
-                // Set default country code for phone number input
-                if (phoneNumberInput.value === '' || phoneNumberInput.value === '+') {
-                    phoneNumberInput.value = '+91';
-                }
-
-                // Setup reCAPTCHA Verifier for phone auth
-                window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-                    'size': 'invisible',
-                    'callback': (response) => {
-                        // reCAPTCHA solved
-                    },
-                    'expired-callback': () => {
-                        authMessage.textContent = 'reCAPTCHA expired. Please try again.';
-                        sendOtpButton.disabled = false;
-                    }
-                });
-                window.recaptchaVerifier.render(); // Call render after initialization
-
                 // Listen for auth state changes
                 onAuthStateChanged(auth, async (user) => {
                     if (user) {
                         userId = user.uid;
-                        phoneNumber = user.phoneNumber; // Will be null if logged in via Google
-                        email = user.email; // Will be null if logged in via phone
+                        userName = user.displayName; // Get display name from Google profile
+                        userEmail = user.email; // Get email from Google profile
                         userIdDisplay.textContent = userId.substring(0, 8) + '...';
                         isAuthReady = true;
                         authContainer.classList.add('hidden');
@@ -307,8 +257,8 @@
                         if (!userDocSnap.exists()) {
                             await setDoc(userDocRef, {
                                 uid: userId,
-                                phoneNumber: phoneNumber,
-                                email: email, // Store email if available
+                                displayName: userName, // Store display name
+                                email: userEmail, // Store email
                                 createdAt: serverTimestamp()
                             });
                         }
@@ -319,14 +269,13 @@
 
                     } else {
                         userId = null;
-                        phoneNumber = null;
-                        email = null;
+                        userName = null;
+                        userEmail = null;
                         userIdDisplay.textContent = 'Not Authenticated';
                         isAuthReady = false;
                         loadingOverlay.classList.add('hidden');
                         appContainer.classList.add('hidden');
                         authContainer.classList.remove('hidden');
-                        otpSection.classList.add('hidden');
                         authMessage.textContent = '';
                         messageInput.disabled = true;
                         sendButton.disabled = true;
@@ -344,77 +293,26 @@
             }
         }
 
-        // Send OTP
-        sendOtpButton.addEventListener('click', async () => {
-            const phoneNum = phoneNumberInput.value.trim();
-            if (!phoneNum) {
-                authMessage.textContent = 'Please enter a phone number.';
-                return;
-            }
-            authMessage.textContent = '';
-            sendOtpButton.disabled = true;
-            loadingOverlay.classList.remove('hidden');
-
-            try {
-                if (!window.recaptchaVerifier) {
-                    showMessageBox("reCAPTCHA not initialized. Please refresh the page.", 'error');
-                    sendOtpButton.disabled = false;
-                    loadingOverlay.classList.add('hidden');
-                    return;
-                }
-                
-                confirmationResult = await signInWithPhoneNumber(auth, phoneNum, window.recaptchaVerifier);
-                otpSection.classList.remove('hidden');
-                authMessage.textContent = 'OTP sent successfully!';
-            } catch (error) {
-                console.error("Error sending OTP:", error);
-                authMessage.textContent = `Error sending OTP: ${error.message}`;
-                showMessageBox(`Error sending OTP: ${error.message}`, 'error');
-            } finally {
-                sendOtpButton.disabled = false;
-                loadingOverlay.classList.add('hidden');
-            }
-        });
-
-        // Verify OTP
-        verifyOtpButton.addEventListener('click', async () => {
-            const otpCode = otpInput.value.trim();
-            if (!otpCode) {
-                authMessage.textContent = 'Please enter the OTP.';
-                return;
-            }
-            authMessage.textContent = '';
-            verifyOtpButton.disabled = true;
-            loadingOverlay.classList.remove('hidden');
-
-            try {
-                if (confirmationResult) {
-                    await confirmationResult.confirm(otpCode);
-                    // User is signed in, onAuthStateChanged listener will handle UI update
-                } else {
-                    authMessage.textContent = 'No confirmation result found. Please send OTP first.';
-                }
-            } catch (error) {
-                console.error("Error verifying OTP:", error);
-                authMessage.textContent = `Error verifying OTP: ${error.message}`;
-                showMessageBox(`Error verifying OTP: ${error.message}`, 'error');
-            } finally {
-                verifyOtpButton.disabled = false;
-                loadingOverlay.classList.add('hidden');
-            }
-        });
-
         // Google Sign-In
         googleSignInButton.addEventListener('click', async () => {
             authMessage.textContent = '';
             loadingOverlay.classList.remove('hidden');
             try {
                 const provider = new GoogleAuthProvider();
+                // signInWithPopup is used here. On mobile, popups might be blocked or
+                // behave unexpectedly. If issues persist, consider Firebase's signInWithRedirect
+                // for a better mobile experience, though it requires more complex state handling.
                 await signInWithPopup(auth, provider);
                 // User is signed in, onAuthStateChanged listener will handle UI update
             } catch (error) {
                 console.error("Error signing in with Google:", error);
-                authMessage.textContent = `Error signing in with Google: ${error.message}`;
+                if (error.code === 'auth/popup-closed-by-user') {
+                    authMessage.textContent = 'Google sign-in popup was closed. Please try again.';
+                } else if (error.code === 'auth/cancelled-popup-request') {
+                    authMessage.textContent = 'Google sign-in popup was already open. Please complete the existing sign-in or close it.';
+                } else {
+                    authMessage.textContent = `Error signing in with Google: ${error.message}`;
+                }
                 showMessageBox(`Error signing in with Google: ${error.message}`, 'error');
             } finally {
                 loadingOverlay.classList.add('hidden');
@@ -443,8 +341,8 @@
             if (isSender) {
                 senderDisplayName = 'You';
             } else {
-                // Display partner's phone number or email, or truncated UID
-                senderDisplayName = messageData.senderPhoneNumber || messageData.senderEmail || `User: ${messageData.senderId.substring(0, 8)}...`;
+                // Prioritize displayName, then email, then truncated UID
+                senderDisplayName = messageData.senderDisplayName || messageData.senderEmail || `User: ${messageData.senderId.substring(0, 8)}...`;
             }
 
             const timestamp = messageData.timestamp ? new Date(messageData.timestamp.toDate()).toLocaleString() : 'Just now';
@@ -516,24 +414,24 @@
                     const userElement = document.createElement('div');
                     userElement.className = 'p-4 border-b border-gray-300 bg-white cursor-pointer hover:bg-gray-100';
                     userElement.setAttribute('data-user-id', userData.uid);
-                    userElement.setAttribute('data-phone-number', userData.phoneNumber || '');
+                    userElement.setAttribute('data-display-name', userData.displayName || '');
                     userElement.setAttribute('data-email', userData.email || '');
                     
-                    let displayName = userData.phoneNumber || userData.email || `User: ${userData.uid.substring(0, 8)}...`;
+                    let displayNameForList = userData.displayName || userData.email || `User: ${userData.uid.substring(0, 8)}...`;
 
                     userElement.innerHTML = `
-                        <div class="font-semibold text-gray-800">${displayName}</div>
+                        <div class="font-semibold text-gray-800">${displayNameForList}</div>
                         <div class="text-sm text-gray-600">Click to chat</div>
                     `;
                     userElement.addEventListener('click', () => {
-                        selectChat(userData.uid, displayName, userData.phoneNumber, userData.email);
+                        selectChat(userData.uid, displayNameForList, userData.displayName, userData.email);
                     });
                     userList.appendChild(userElement);
                 });
             }
         }
 
-        // Search users by phone number or email
+        // Search users by display name or email
         userSearchInput.addEventListener('input', () => {
             const searchTerm = userSearchInput.value.trim().toLowerCase();
             if (searchTerm === '') {
@@ -542,29 +440,29 @@
             }
 
             const filteredUsers = allUsers.filter(user =>
-                (user.phoneNumber && user.phoneNumber.toLowerCase().includes(searchTerm)) ||
+                (user.displayName && user.displayName.toLowerCase().includes(searchTerm)) ||
                 (user.email && user.email.toLowerCase().includes(searchTerm))
             );
             displayUsers(filteredUsers);
         });
 
-        // Function to invite a user via SMS
+        // Function to invite a user via SMS (assuming identifier is a phone number)
         function inviteUser(identifier) {
-            // Assuming the identifier is a phone number for SMS invites
+            // This function assumes 'identifier' is a phone number for SMS.
+            // If you want to invite via email, you'd need a different mechanism (e.g., mailto: link).
             const message = encodeURIComponent(`Join me on FalconixTalk! Download the app here: [Your App Link Here]`); // Replace with your actual app link
             window.location.href = `sms:${identifier}?body=${message}`;
         }
 
         // Select a chat (public or personal)
-        function selectChat(partnerId, partnerName, partnerPhoneNumber = null, partnerEmail = null) {
+        function selectChat(partnerId, partnerNameForHeader, partnerDisplayName = null, partnerEmail = null) {
             if (unsubscribeMessages) {
                 unsubscribeMessages(); // Unsubscribe from previous chat listener
             }
             messagesContainer.innerHTML = ''; // Clear messages from previous chat
             selectedChatPartnerId = partnerId;
-            selectedChatPartnerPhoneNumber = partnerPhoneNumber; // Store for display
-            selectedChatPartnerEmail = partnerEmail; // Store for display
-            chatHeaderName.textContent = partnerName;
+            selectedChatPartnerDisplayName = partnerDisplayName || partnerEmail || partnerNameForHeader; // Store for display
+            chatHeaderName.textContent = partnerNameForHeader;
             messageInput.disabled = false;
             sendButton.disabled = false;
             setupRealtimeMessages(); // Set up new listener for the selected chat
@@ -640,8 +538,8 @@
             try {
                 await addDoc(collection(db, `artifacts/${appId}/public/data/messages`), {
                     senderId: userId,
-                    senderPhoneNumber: phoneNumber, // Will be null if Google login
-                    senderEmail: email, // Will be null if phone login
+                    senderDisplayName: userName, // Store sender's display name
+                    senderEmail: userEmail, // Store sender's email
                     receiverId: selectedChatPartnerId === 'public-chat' ? null : selectedChatPartnerId,
                     text: messageText,
                     timestamp: serverTimestamp()

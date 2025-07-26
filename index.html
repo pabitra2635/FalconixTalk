@@ -9,11 +9,15 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         /* Base styles for light and dark mode */
-        body {
-            font-family: 'Inter', sans-serif;
+        html, body {
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
             margin: 0;
             padding: 0;
-            overflow: hidden;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
             background-color: #ECE5DD; /* Light mode page background */
         }
         .dark body {
@@ -58,7 +62,8 @@
             /* Make app container full screen on mobile */
             #app-container {
                 flex-direction: column;
-                height: 100vh;
+                width: 100%;
+                height: 100%;
                 max-height: 100vh;
                 border-radius: 0;
             }
@@ -133,7 +138,7 @@
     </div>
 
     <!-- Main App Container -->
-    <div id="app-container" class="hidden flex w-full h-full max-w-7xl bg-white dark:bg-[#202C33] shadow-2xl rounded-xl overflow-hidden">
+    <div id="app-container" class="hidden flex w-full max-w-7xl bg-white dark:bg-[#202C33] shadow-2xl rounded-xl overflow-hidden">
         <!-- Sidebar -->
         <div class="w-full md:w-1/3 bg-[#F0F2F5] dark:bg-[#111B21] border-r border-gray-200 dark:border-gray-700 flex flex-col">
             <!-- Sidebar Header -->
@@ -618,6 +623,7 @@
         // Back button for mobile
         backButton.addEventListener('click', () => {
             appContainer.classList.remove('chat-view-active');
+            // When going back, reset to a neutral state or select public chat by default
             selectChat('public-chat', 'Public Chat', "https://placehold.co/40x40/4CAF50/ffffff?text=GC");
         });
 

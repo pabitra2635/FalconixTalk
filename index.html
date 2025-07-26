@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FalconixTalk</title>
+    <title>FalconixTalk - WhatsApp Style</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -13,6 +13,7 @@
             margin: 0;
             padding: 0;
             overflow: hidden; /* Prevent body scroll */
+            background-color: #ECE5DD; /* WhatsApp background color */
         }
         /* Custom scrollbar for chat messages */
         .chat-messages::-webkit-scrollbar {
@@ -49,7 +50,7 @@
         /* Loading spinner styles */
         .spinner {
             border: 4px solid rgba(0, 0, 0, 0.1);
-            border-left-color: #25D366;
+            border-left-color: #128C7E; /* WhatsApp dark green */
             border-radius: 50%;
             width: 40px;
             height: 40px;
@@ -61,34 +62,75 @@
             100% { transform: rotate(360deg); }
         }
 
+        /* Message bubble animations */
+        @keyframes fade-in {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fade-in 0.3s ease-out;
+        }
+
         /* Responsive adjustments for smaller screens */
         @media (max-width: 767px) {
-            #app-container .md\\:flex {
-                flex-direction: column; /* Stack sidebar and chat area vertically */
+            #app-container {
+                flex-direction: column;
+                max-height: 100vh;
+                border-radius: 0;
             }
-            #app-container .w-full.md\\:w-1\\/3 {
-                width: 100%; /* Sidebar takes full width on small screens */
-                height: 50%; /* Adjust height as needed, or make it collapsible */
-                border-right: none; /* Remove right border */
-                border-bottom: 1px solid #d1d5db; /* Add bottom border */
-            }
-            #app-container .flex-grow.md\\:w-2\\/3 {
-                width: 100%; /* Chat area takes full width on small screens */
-                height: 50%; /* Adjust height as needed */
-            }
-            /* Hide sidebar on small screens by default, show chat area */
-            #app-container .md\\:flex > div:first-child {
-                display: none; /* Hide sidebar */
-            }
-            #app-container.chat-active .md\\:flex > div:first-child {
-                display: flex; /* Show sidebar when chat-active class is present */
-            }
-            #app-container.chat-active .md\\:flex > div:last-child {
-                display: none; /* Hide chat area when sidebar is shown */
-            }
-            /* Ensure chat area is always visible if no specific chat is selected */
-            #app-container:not(.chat-active) .md\\:flex > div:last-child {
+            #app-container > div:first-child { /* Sidebar */
+                width: 100%;
+                height: 100%;
+                border-right: none;
+                border-bottom: 1px solid #d1d5db;
                 display: flex;
+            }
+            #app-container > div:last-child { /* Chat Area */
+                width: 100%;
+                height: 100%;
+                border-top-left-radius: 0;
+                border-top-right-radius: 0;
+                display: flex;
+            }
+
+            /* Mobile view: Hide chat area by default, show sidebar */
+            #app-container.chat-view-active > div:first-child { /* Sidebar */
+                display: none;
+            }
+            #app-container.chat-view-active > div:last-child { /* Chat Area */
+                display: flex;
+            }
+
+            /* Mobile view: Hide sidebar when chat is active */
+            #app-container:not(.chat-view-active) > div:first-child { /* Sidebar */
+                display: flex;
+            }
+            #app-container:not(.chat-view-active) > div:last-child { /* Chat Area */
+                display: none;
+            }
+
+            /* Chat header on mobile */
+            #chat-header {
+                display: flex;
+                align-items: center;
+                justify-content: flex-start;
+            }
+            #back-button {
+                display: block;
+                margin-right: 1rem;
+            }
+        }
+
+        /* Default desktop view: Sidebar and Chat area side-by-side */
+        @media (min-width: 768px) {
+            #app-container > div:first-child { /* Sidebar */
+                display: flex !important;
+            }
+            #app-container > div:last-child { /* Chat Area */
+                display: flex !important;
+            }
+            #back-button {
+                display: none;
             }
         }
     </style>
@@ -98,73 +140,87 @@
     <!-- Loading Overlay -->
     <div id="loading-overlay" class="fixed inset-0 bg-white bg-opacity-75 flex items-center justify-center z-50">
         <div class="spinner"></div>
-        <p class="ml-4 text-lg text-gray-700">Loading...</p>
+        <p class="ml-4 text-lg text-gray-700">Loading FalconixTalk...</p>
     </div>
 
     <!-- Login Screen (Google Auth Only) -->
-    <div id="auth-container" class="bg-white p-8 rounded-lg shadow-xl max-w-md w-full text-center">
-        <h2 class="text-2xl font-bold mb-6 text-green-600">Login to FalconixTalk</h2>
+    <div id="auth-container" class="bg-white p-8 rounded-xl shadow-2xl max-w-md w-full text-center">
+        <h2 class="text-3xl font-extrabold mb-8 text-[#128C7E]">Welcome to FalconixTalk</h2>
         
         <!-- Google Sign-In Button -->
         <button id="google-sign-in-button"
-                class="w-full bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-md font-semibold flex items-center justify-center transition duration-300 ease-in-out transform hover:scale-105">
-            <svg class="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
+                class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-full font-semibold flex items-center justify-center space-x-3 shadow-lg transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-blue-300">
+            <svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12.24 10.285V11.69h4.293c-.083.486-.31.887-.697 1.25-.388.363-.88.62-1.476.777l-1.63 1.26c-1.02.79-2.288 1.25-3.69 1.25-2.822 0-5.207-1.92-5.99-4.502H3.96c.86 2.09 2.536 3.73 4.67 4.67 2.134.94 4.54.94 6.674 0l1.63-1.26c.596-.157 1.088-.414 1.476-.777.387-.363.614-.764.697-1.25V10.285h-4.293zM12 4c1.365 0 2.61.46 3.63 1.23l2.87-2.87C16.29 2.51 14.19 2 12 2 8.78 2 5.86 3.24 3.96 5.33l1.83 1.42C6.46 4.92 8.94 4 12 4z"/>
             </svg>
-            Sign in with Google
+            <span>Sign in with Google</span>
         </button>
 
-        <p id="auth-message" class="mt-4 text-red-500 text-sm"></p>
+        <p id="auth-message" class="mt-6 text-red-600 font-medium"></p>
     </div>
 
     <!-- Main FalconixTalk Container -->
-    <div id="app-container" class="hidden flex w-full h-full max-w-7xl max-h-[95vh] bg-white shadow-lg rounded-lg overflow-hidden md:flex">
-        <!-- Sidebar (User List) - Hidden on small screens, shown on medium and larger -->
-        <div class="w-full md:w-1/3 bg-gray-200 border-r border-gray-300 flex flex-col">
-            <div class="p-4 bg-green-600 text-white flex items-center justify-between rounded-tl-lg">
-                <h1 class="text-xl font-semibold">FalconixTalk</h1>
+    <div id="app-container" class="hidden flex w-full h-full max-w-7xl max-h-[95vh] bg-white shadow-2xl rounded-xl overflow-hidden md:flex">
+        <!-- Sidebar (User List) -->
+        <div class="w-full md:w-1/3 bg-[#ECE5DD] border-r border-gray-200 flex flex-col">
+            <div class="p-4 bg-[#128C7E] text-white flex items-center justify-between shadow-md rounded-tl-xl">
+                <h1 class="text-2xl font-bold">FalconixTalk</h1>
                 <div class="flex items-center space-x-3">
                     <!-- Profile Picture and Name -->
-                    <div class="flex items-center space-x-2">
+                    <div class="flex items-center space-x-2 group relative">
                         <label for="profile-picture-upload" class="cursor-pointer">
-                            <img id="user-profile-pic" src="https://placehold.co/40x40/cccccc/ffffff?text=U" alt="Profile" class="w-10 h-10 rounded-full border-2 border-white object-cover">
+                            <img id="user-profile-pic" src="https://placehold.co/40x40/cccccc/ffffff?text=U" alt="Profile" class="w-10 h-10 rounded-full border-2 border-white object-cover shadow-sm transition-transform duration-200 group-hover:scale-110">
                             <input type="file" id="profile-picture-upload" accept="image/*" class="hidden">
                         </label>
                         <span class="text-sm font-medium" id="current-user-display-name"></span>
                     </div>
-                    <button id="logout-button" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md text-sm">Logout</button>
+                    <button id="logout-button" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md text-sm font-semibold shadow-sm transition duration-200 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-300">Logout</button>
                 </div>
             </div>
-            <div class="p-4 border-b border-gray-300">
-                <input type="text" id="user-search-input" placeholder="Search by name or email" class="w-full p-2 rounded-md bg-white border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500">
+            <div class="p-4 border-b border-gray-200 bg-white shadow-sm">
+                <input type="text" id="user-search-input" placeholder="Search by name or email" class="w-full p-2.5 rounded-lg bg-gray-100 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#25D366] transition duration-200">
             </div>
             <!-- User List / Search Results -->
             <div id="user-list" class="flex-grow overflow-y-auto chat-list">
                 <!-- Public Chat always visible -->
-                <div class="p-4 border-b border-gray-300 bg-green-100 cursor-pointer hover:bg-green-200" data-user-id="public-chat">
-                    <div class="font-semibold text-gray-800">Public Chat</div>
-                    <div class="text-sm text-gray-600">Chat with everyone!</div>
+                <div class="chat-list-item p-4 border-b border-gray-200 bg-white cursor-pointer hover:bg-gray-100 transition duration-150 ease-in-out flex items-center space-x-3" data-user-id="public-chat">
+                    <img src="https://placehold.co/40x40/4CAF50/ffffff?text=GC" alt="Public Chat Icon" class="w-10 h-10 rounded-full object-cover">
+                    <div>
+                        <div class="font-semibold text-gray-800">Public Chat</div>
+                        <div class="text-sm text-gray-600">Chat with everyone!</div>
+                    </div>
                 </div>
                 <!-- Other users/search results will be loaded here -->
             </div>
         </div>
 
         <!-- Main Chat Area -->
-        <div class="flex-grow flex flex-col w-full md:w-2/3">
+        <div class="flex-grow flex flex-col w-full md:w-2/3 bg-[#ECE5DD]">
             <!-- Chat Header -->
-            <div class="p-4 bg-green-600 text-white flex items-center border-b border-gray-300 rounded-tr-lg">
-                <h2 id="chat-header-name" class="text-lg font-semibold">Select a Chat</h2>
+            <div id="chat-header" class="p-4 bg-[#128C7E] text-white flex items-center border-b border-gray-300 shadow-md rounded-tr-xl">
+                <button id="back-button" class="md:hidden text-white mr-4 p-2 rounded-full hover:bg-[#075E54] transition duration-200 focus:outline-none focus:ring-2 focus:ring-[#25D366]">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    </svg>
+                </button>
+                <div class="flex items-center">
+                    <img id="chat-partner-pic" src="https://placehold.co/40x40/cccccc/ffffff?text=U" alt="Partner Profile" class="w-10 h-10 rounded-full object-cover mr-3">
+                    <div>
+                        <h2 id="chat-header-name" class="text-xl font-semibold">Select a Chat</h2>
+                        <p id="chat-partner-status" class="text-sm text-gray-200"></p>
+                    </div>
+                </div>
             </div>
 
             <!-- Messages Display Area -->
-            <div id="messages-container" class="flex-grow p-4 overflow-y-auto bg-green-50 chat-messages flex flex-col-reverse">
+            <div id="messages-container" class="flex-grow p-4 overflow-y-auto chat-messages flex flex-col-reverse space-y-2">
                 <!-- Messages will be appended here by JavaScript -->
             </div>
 
             <!-- Message Input Area -->
-            <div class="p-4 bg-gray-100 border-t border-gray-300 flex items-center rounded-br-lg">
-                <input type="text" id="message-input" placeholder="Type a message..." class="flex-grow p-3 rounded-full bg-white border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 mr-2" disabled>
-                <button id="send-button" class="bg-green-500 hover:bg-green-600 text-white p-3 rounded-full shadow-md transition duration-300 ease-in-out transform hover:scale-105" disabled>
+            <div class="p-4 bg-gray-100 border-t border-gray-300 flex items-center space-x-2 shadow-inner rounded-br-xl">
+                <input type="text" id="message-input" placeholder="Type a message..." class="flex-grow p-3 rounded-full bg-white border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#25D366] transition duration-200" disabled>
+                <button id="send-button" class="bg-[#25D366] hover:bg-[#075E54] text-white p-3 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-[#25D366]" disabled>
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
                     </svg>
@@ -178,9 +234,8 @@
         // Import only the necessary core Firebase modules
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
         import { getAuth, onAuthStateChanged, signOut, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
-        import { getFirestore, collection, addDoc, query, where, onSnapshot, serverTimestamp, setDoc, doc, getDoc, getDocs } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, query, where, onSnapshot, serverTimestamp, setDoc, doc, getDoc, getDocs, orderBy, updateDoc } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
         import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-storage.js";
-
 
         // Your web app's Firebase configuration
         const firebaseConfig = {
@@ -193,22 +248,23 @@
             measurementId: "G-GGQCH7PTCE"
         };
 
-        // App ID derived from the provided firebaseConfig
-        const appId = firebaseConfig.projectId; // Using projectId as appId for consistency with Firestore paths
+        const appId = firebaseConfig.projectId;
 
         let app;
         let db;
         let auth;
-        let storage; // Firebase Storage instance
+        let storage;
         let userId = null;
-        let userName = null; // Store user's display name from Google
-        let userEmail = null; // Store user's email
-        let userProfilePicUrl = null; // Store user's profile picture URL
+        let userName = null;
+        let userEmail = null;
+        let userProfilePicUrl = null;
         let isAuthReady = false;
-        let selectedChatPartnerId = 'public-chat'; // Default to public chat
-        let selectedChatPartnerDisplayName = 'Public Chat'; // Default for display
-        let unsubscribeMessages = null; // To unsubscribe from previous chat listener
-        let allUsers = []; // Cache all users for search functionality
+        let selectedChatPartnerId = 'public-chat';
+        let selectedChatPartnerDisplayName = 'Public Chat';
+        let selectedChatPartnerProfilePic = "https://placehold.co/40x40/4CAF50/ffffff?text=GC"; // Default for public chat
+        let unsubscribeMessages = null;
+        let unsubscribePartnerStatus = null; // New: to unsubscribe from partner status listener
+        let allUsers = [];
 
         // DOM Elements
         const loadingOverlay = document.getElementById('loading-overlay');
@@ -219,24 +275,26 @@
         const messagesContainer = document.getElementById('messages-container');
         const messageInput = document.getElementById('message-input');
         const sendButton = document.getElementById('send-button');
-        const userIdDisplay = document.getElementById('user-id-display');
         const userList = document.getElementById('user-list');
         const chatHeaderName = document.getElementById('chat-header-name');
+        const chatPartnerStatus = document.getElementById('chat-partner-status'); // New: for online/last seen status
+        const chatPartnerPic = document.getElementById('chat-partner-pic'); // New: for partner's profile pic in header
         const logoutButton = document.getElementById('logout-button');
         const userSearchInput = document.getElementById('user-search-input');
-        const userProfilePic = document.getElementById('user-profile-pic'); // New: User's own profile pic display
-        const profilePictureUpload = document.getElementById('profile-picture-upload'); // New: File input for profile pic
-        const currentUserDisplayName = document.getElementById('current-user-display-name'); // New: User's own display name
+        const userProfilePic = document.getElementById('user-profile-pic');
+        const profilePictureUpload = document.getElementById('profile-picture-upload');
+        const currentUserDisplayName = document.getElementById('current-user-display-name');
+        const backButton = document.getElementById('back-button');
+        const publicChatListItem = userList.querySelector('[data-user-id="public-chat"]');
 
-        // Default profile picture placeholder
         const DEFAULT_PROFILE_PIC = "https://placehold.co/40x40/cccccc/ffffff?text=U";
-        const DEFAULT_CHAT_PIC = "https://placehold.co/32x32/cccccc/ffffff?text=U"; // Smaller for chat messages
+        const DEFAULT_CHAT_PIC = "https://placehold.co/32x32/cccccc/ffffff?text=U";
 
         // Function to show a custom message box (instead of alert)
         function showMessageBox(message, type = 'info') {
             const messageBox = document.createElement('div');
             messageBox.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]';
-            const bgColor = type === 'error' ? 'bg-red-500' : 'bg-green-500';
+            const bgColor = type === 'error' ? 'bg-red-500' : 'bg-[#25D366]'; // WhatsApp green for info
             messageBox.innerHTML = `
                 <div class="bg-white p-6 rounded-lg shadow-xl max-w-sm text-center">
                     <p class="text-lg font-semibold mb-4 ${type === 'error' ? 'text-red-700' : 'text-gray-800'}">${message}</p>
@@ -250,6 +308,25 @@
             };
         }
 
+        // Function to format timestamp for "last seen"
+        function formatLastSeen(timestamp) {
+            if (!timestamp) return 'Offline';
+            const date = timestamp.toDate();
+            const now = new Date();
+            const diff = now.getTime() - date.getTime(); // Difference in milliseconds
+
+            const minutes = Math.floor(diff / (1000 * 60));
+            const hours = Math.floor(diff / (1000 * 60 * 60));
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+
+            if (minutes < 1) return 'Online'; // If less than 1 minute, consider online
+            if (minutes < 60) return `last seen ${minutes}m ago`;
+            if (hours < 24) return `last seen ${hours}h ago`;
+            if (days < 7) return `last seen ${days}d ago`;
+
+            return `last seen on ${date.toLocaleDateString()} at ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+        }
+
         // Initialize Firebase and set up authentication
         async function initializeFirebase() {
             console.log("Initializing Firebase...");
@@ -257,7 +334,7 @@
                 app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
-                storage = getStorage(app); // Initialize Firebase Storage
+                storage = getStorage(app);
                 console.log("Firebase services initialized.");
 
                 // Listen for auth state changes
@@ -265,15 +342,11 @@
                     console.log("Auth state changed. User:", user);
                     if (user) {
                         userId = user.uid;
-                        userName = user.displayName; // Get display name from Google profile
-                        userEmail = user.email; // Get email from Google profile
-                        
-                        // Null checks for DOM elements
-                        if (userIdDisplay) {
-                            userIdDisplay.textContent = userId.substring(0, 8) + '...';
-                        }
+                        userName = user.displayName;
+                        userEmail = user.email;
+
                         if (currentUserDisplayName) {
-                            currentUserDisplayName.textContent = userName || userEmail || 'Guest'; // Display user's name
+                            currentUserDisplayName.textContent = userName || userEmail || 'Guest';
                         }
 
                         isAuthReady = true;
@@ -282,36 +355,44 @@
                         loadingOverlay.classList.add('hidden');
                         console.log("User authenticated:", userId);
 
-                        // Save user details to Firestore if not already present
                         const userDocRef = doc(db, `artifacts/${appId}/users/${userId}`);
                         const userDocSnap = await getDoc(userDocRef);
                         if (!userDocSnap.exists()) {
                             console.log("New user. Saving details to Firestore.");
                             await setDoc(userDocRef, {
                                 uid: userId,
-                                displayName: userName, // Store display name
-                                email: userEmail, // Store email
-                                profilePictureUrl: user.photoURL || DEFAULT_PROFILE_PIC, // Store Google profile pic or default
-                                createdAt: serverTimestamp()
+                                displayName: userName,
+                                email: userEmail,
+                                profilePictureUrl: user.photoURL || DEFAULT_PROFILE_PIC,
+                                createdAt: serverTimestamp(),
+                                online: true, // New: Set online status
+                                lastSeen: serverTimestamp() // New: Set last seen timestamp
                             });
                             userProfilePicUrl = user.photoURL || DEFAULT_PROFILE_PIC;
                         } else {
-                            console.log("Existing user. Loading profile from Firestore.");
-                            // If user exists, update local state with their Firestore data
+                            console.log("Existing user. Loading profile from Firestore and updating status.");
                             const userData = userDocSnap.data();
                             userProfilePicUrl = userData.profilePictureUrl || DEFAULT_PROFILE_PIC;
-                            userName = userData.displayName || userName; // Use Firestore displayName if available
-                            userEmail = userData.email || userEmail; // Use Firestore email if available
-                            if (currentUserDisplayName) { // Re-check in case it was null initially
+                            userName = userData.displayName || userName;
+                            userEmail = userData.email || userEmail;
+                            if (currentUserDisplayName) {
                                 currentUserDisplayName.textContent = userName || userEmail || 'Guest';
                             }
+                            // Update online status and last seen for existing user
+                            await updateDoc(userDocRef, {
+                                online: true,
+                                lastSeen: serverTimestamp()
+                            });
                         }
-                        if (userProfilePic) { // Null check
-                            userProfilePic.src = userProfilePicUrl; // Set profile picture in header
+                        if (userProfilePic) {
+                            userProfilePic.src = userProfilePicUrl;
                         }
                         
-                        await loadUsers(); // Load all users for the sidebar and caching
-                        // Initial chat selection (e.g., public chat or first contact)
+                        // Set up listener for page visibility to update online status
+                        document.addEventListener('visibilitychange', handleVisibilityChange);
+                        window.addEventListener('beforeunload', handleBeforeUnload);
+
+                        await loadUsers();
                         selectChat('public-chat', 'Public Chat');
                         console.log("Application ready.");
 
@@ -322,15 +403,11 @@
                         userEmail = null;
                         userProfilePicUrl = null;
 
-                        // Null checks for DOM elements when not authenticated
-                        if (userIdDisplay) {
-                            userIdDisplay.textContent = 'Not Authenticated';
-                        }
                         if (currentUserDisplayName) {
                             currentUserDisplayName.textContent = '';
                         }
                         if (userProfilePic) {
-                            userProfilePic.src = DEFAULT_PROFILE_PIC; // Reset profile pic to default
+                            userProfilePic.src = DEFAULT_PROFILE_PIC;
                         }
 
                         isAuthReady = false;
@@ -343,7 +420,20 @@
                         if (unsubscribeMessages) {
                             unsubscribeMessages();
                         }
+                        if (unsubscribePartnerStatus) {
+                            unsubscribePartnerStatus();
+                        }
                         messagesContainer.innerHTML = '';
+                        userList.innerHTML = '';
+                        // Re-add a fresh public chat list item when logged out
+                        const newPublicChatListItem = publicChatListItem.cloneNode(true);
+                        userList.appendChild(newPublicChatListItem);
+                        newPublicChatListItem.addEventListener('click', () => {
+                            showMessageBox("Please sign in to chat.", 'info');
+                        });
+                        // Remove visibility change listeners on logout
+                        document.removeEventListener('visibilitychange', handleVisibilityChange);
+                        window.removeEventListener('beforeunload', handleBeforeUnload);
                     }
                 });
 
@@ -353,6 +443,36 @@
                 loadingOverlay.classList.add('hidden');
             }
         }
+
+        // Handle user online/offline status based on page visibility
+        async function handleVisibilityChange() {
+            if (userId && db) {
+                const userDocRef = doc(db, `artifacts/${appId}/users/${userId}`);
+                if (document.visibilityState === 'hidden') {
+                    // User navigated away or tab is in background
+                    await updateDoc(userDocRef, { online: false, lastSeen: serverTimestamp() });
+                    console.log("User set to offline.");
+                } else {
+                    // User returned to tab
+                    await updateDoc(userDocRef, { online: true, lastSeen: serverTimestamp() });
+                    console.log("User set to online.");
+                }
+            }
+        }
+
+        // Handle user offline status when closing the browser/tab
+        async function handleBeforeUnload() {
+            if (userId && db) {
+                const userDocRef = doc(db, `artifacts/${appId}/users/${userId}`);
+                // Use navigator.sendBeacon for reliable updates on page unload
+                // Note: sendBeacon is best for small amounts of data.
+                // For a more robust solution, consider Cloud Functions for presence.
+                const payload = JSON.stringify({ online: false, lastSeen: new Date().toISOString() });
+                navigator.sendBeacon(`https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/(default)/documents/artifacts/${appId}/users/${userId}?key=${firebaseConfig.apiKey}`, payload);
+                console.log("Attempted to send offline beacon.");
+            }
+        }
+
 
         // Google Sign-In
         googleSignInButton.addEventListener('click', async () => {
@@ -381,6 +501,12 @@
         // Logout
         logoutButton.addEventListener('click', async () => {
             try {
+                if (userId && db) {
+                    // Set user offline before logging out
+                    const userDocRef = doc(db, `artifacts/${appId}/users/${userId}`);
+                    await updateDoc(userDocRef, { online: false, lastSeen: serverTimestamp() });
+                    console.log("User set to offline before logout.");
+                }
                 await signOut(auth);
                 showMessageBox("Logged out successfully.");
             } catch (error) {
@@ -401,7 +527,7 @@
                 return;
             }
 
-            loadingOverlay.classList.remove('hidden'); // Show loading spinner
+            loadingOverlay.classList.remove('hidden');
             console.log("Uploading profile picture:", file.name);
             try {
                 const storageRef = ref(storage, `profile_pictures/${userId}/${file.name}`);
@@ -426,12 +552,12 @@
             }
         });
 
-
         // Function to display a message in the chat
         function displayMessage(messageData) {
             const messageElement = document.createElement('div');
             const isSender = messageData.senderId === userId;
-            const messageClass = isSender ? 'bg-green-200 self-end' : 'bg-white self-start';
+            // WhatsApp-like bubble colors
+            const messageClass = isSender ? 'bg-[#DCF8C6] self-end rounded-br-none' : 'bg-white self-start rounded-bl-none';
             const textColor = isSender ? 'text-gray-800' : 'text-gray-700';
             
             let senderDisplayName;
@@ -441,21 +567,21 @@
                 senderDisplayName = 'You';
                 senderProfilePic = userProfilePicUrl || DEFAULT_CHAT_PIC;
             } else {
-                // Find the sender in allUsers cache to get their profile picture
+                // Find the sender in allUsers cache to get their profile picture and display name
                 const senderUser = allUsers.find(user => user.uid === messageData.senderId);
-                senderDisplayName = messageData.senderDisplayName || messageData.senderEmail || `User: ${messageData.senderId.substring(0, 8)}...`;
+                senderDisplayName = messageData.senderDisplayName || (senderUser && senderUser.displayName) || `User: ${messageData.senderId.substring(0, 8)}...`;
                 senderProfilePic = (senderUser && senderUser.profilePictureUrl) ? senderUser.profilePictureUrl : DEFAULT_CHAT_PIC;
             }
 
-            const timestamp = messageData.timestamp ? new Date(messageData.timestamp.toDate()).toLocaleString() : 'Just now';
+            const timestamp = messageData.timestamp ? new Date(messageData.timestamp.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Sending...';
 
-            messageElement.className = `flex items-start p-2 my-1 rounded-xl shadow-sm ${messageClass} ${textColor} ${isSender ? 'flex-row-reverse' : ''}`;
+            messageElement.className = `flex items-end p-2.5 my-1 rounded-xl shadow-sm ${messageClass} ${textColor} ${isSender ? 'flex-row-reverse' : ''} max-w-[80%] md:max-w-[70%] animate-fade-in`;
             messageElement.innerHTML = `
-                <img src="${senderProfilePic}" alt="Profile" class="w-8 h-8 rounded-full object-cover ${isSender ? 'ml-2' : 'mr-2'}">
-                <div class="flex flex-col">
-                    <div class="font-semibold text-xs mb-1 ${isSender ? 'text-right' : 'text-left'}">${senderDisplayName}</div>
-                    <p class="break-words">${messageData.text}</p>
-                    <div class="text-right text-xs text-gray-500 mt-1">${timestamp}</div>
+                <img src="${senderProfilePic}" alt="Profile" class="w-8 h-8 rounded-full object-cover ${isSender ? 'ml-2' : 'mr-2'} flex-shrink-0">
+                <div class="flex flex-col ${isSender ? 'items-end' : 'items-start'}">
+                    <div class="font-semibold text-xs mb-0.5 ${isSender ? 'text-right' : 'text-left'}">${senderDisplayName}</div>
+                    <p class="break-words text-sm">${messageData.text}</p>
+                    <div class="text-right text-xs text-gray-500 mt-0.5">${timestamp}</div>
                 </div>
             `;
             messagesContainer.prepend(messageElement); // Prepend to show latest at bottom (due to flex-col-reverse)
@@ -465,32 +591,51 @@
         async function loadUsers() {
             if (!db || !userId) return;
 
-            userList.innerHTML = `
-                <div class="p-4 border-b border-gray-300 bg-green-100 cursor-pointer hover:bg-green-200" data-user-id="public-chat">
-                    <div class="flex items-center space-x-3">
-                        <img src="${DEFAULT_PROFILE_PIC}" alt="Public Chat" class="w-10 h-10 rounded-full object-cover">
-                        <div>
-                            <div class="font-semibold text-gray-800">Public Chat</div>
-                            <div class="text-sm text-gray-600">Chat with everyone!</div>
-                        </div>
-                    </div>
-                </div>
-            `; // Clear and re-add public chat
+            // Clone the public chat item and remove other items
+            const publicChatElementClone = publicChatListItem.cloneNode(true);
+            userList.innerHTML = ''; // Clear existing list
+            userList.appendChild(publicChatElementClone);
+            publicChatElementClone.addEventListener('click', () => {
+                selectChat('public-chat', 'Public Chat', null, null, "https://placehold.co/40x40/4CAF50/ffffff?text=GC");
+            });
 
             console.log("Loading users from Firestore...");
             try {
                 const usersRef = collection(db, `artifacts/${appId}/users`);
                 const q = query(usersRef);
-                const querySnapshot = await getDocs(q);
-                allUsers = []; // Clear previous cache
-                querySnapshot.forEach((doc) => {
-                    const userData = doc.data();
-                    if (userData.uid !== userId) { // Don't list self
-                        allUsers.push(userData);
+                // Listen for real-time updates on user list to get online status changes
+                onSnapshot(q, (snapshot) => {
+                    allUsers = []; // Clear previous cache
+                    const currentUsersInList = userList.querySelectorAll('.chat-list-item:not([data-user-id="public-chat"])');
+                    currentUsersInList.forEach(el => el.remove()); // Remove old user elements
+
+                    snapshot.forEach((doc) => {
+                        const userData = doc.data();
+                        if (userData.uid !== userId) { // Don't list self
+                            allUsers.push(userData);
+                        }
+                    });
+                    // Sort users: online users first, then by display name
+                    allUsers.sort((a, b) => {
+                        if (a.online && !b.online) return -1;
+                        if (!a.online && b.online) return 1;
+                        return (a.displayName || '').localeCompare(b.displayName || '');
+                    });
+                    displayUsers(allUsers); // Display all loaded users initially
+                    console.log("Users loaded/updated:", allUsers.length);
+
+                    // If the currently selected chat partner's status changed, update header
+                    if (selectedChatPartnerId !== 'public-chat') {
+                        const partner = allUsers.find(u => u.uid === selectedChatPartnerId);
+                        if (partner) {
+                            chatPartnerStatus.textContent = partner.online ? 'Online' : formatLastSeen(partner.lastSeen);
+                        }
                     }
+                }, (error) => {
+                    console.error("Error listening to users:", error);
+                    showMessageBox(`Error loading users: ${error.message}`, 'error');
                 });
-                displayUsers(allUsers); // Display all loaded users initially
-                console.log("Users loaded:", allUsers.length);
+
             } catch (error) {
                 console.error("Error loading users:", error);
                 showMessageBox(`Error loading users: ${error.message}`, 'error');
@@ -501,20 +646,25 @@
         function displayUsers(usersToDisplay) {
             // Remove all user elements except the public chat
             const publicChatElement = userList.querySelector('[data-user-id="public-chat"]');
-            userList.innerHTML = '';
-            userList.appendChild(publicChatElement);
+            const userElementsToRemove = userList.querySelectorAll('.chat-list-item:not([data-user-id="public-chat"])');
+            userElementsToRemove.forEach(el => el.remove());
 
+            if (selectedChatPartnerId === 'public-chat') {
+                publicChatElement.classList.add('bg-[#E0F2F1]', 'font-bold'); // Lighter WhatsApp green for selected
+            } else {
+                publicChatElement.classList.remove('bg-[#E0F2F1]', 'font-bold');
+            }
+            
             if (usersToDisplay.length === 0 && userSearchInput.value.trim() !== '') {
-                // If no users found for search, show invite option
                 const inviteIdentifier = userSearchInput.value.trim();
                 const inviteElement = document.createElement('div');
-                inviteElement.className = 'p-4 border-b border-gray-300 bg-yellow-100 cursor-pointer hover:bg-yellow-200 flex items-center justify-between';
+                inviteElement.className = 'p-4 border-b border-gray-200 bg-yellow-100 cursor-pointer hover:bg-yellow-200 transition duration-150 ease-in-out flex items-center justify-between rounded-md';
                 inviteElement.innerHTML = `
                     <div>
                         <div class="font-semibold text-gray-800">No user found for "${inviteIdentifier}"</div>
                         <div class="text-sm text-gray-600">Invite them to FalconixTalk!</div>
                     </div>
-                    <button class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-md text-sm" data-invite-identifier="${inviteIdentifier}">Invite via SMS</button>
+                    <button class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-md text-sm font-semibold shadow-sm transition duration-200 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-300" data-invite-identifier="${inviteIdentifier}">Invite via SMS</button>
                 `;
                 userList.appendChild(inviteElement);
                 inviteElement.querySelector('button').addEventListener('click', (e) => {
@@ -524,26 +674,27 @@
             } else {
                 usersToDisplay.forEach((userData) => {
                     const userElement = document.createElement('div');
-                    userElement.className = 'p-4 border-b border-gray-300 bg-white cursor-pointer hover:bg-gray-100';
+                    userElement.className = 'chat-list-item p-4 border-b border-gray-200 bg-white cursor-pointer hover:bg-gray-100 transition duration-150 ease-in-out flex items-center space-x-3 rounded-md';
                     userElement.setAttribute('data-user-id', userData.uid);
-                    userElement.setAttribute('data-display-name', userData.displayName || '');
-                    userElement.setAttribute('data-email', userData.email || '');
-                    
+
                     let displayNameForList = userData.displayName || userData.email || `User: ${userData.uid.substring(0, 8)}...`;
                     let profilePicForList = userData.profilePictureUrl || DEFAULT_PROFILE_PIC;
+                    let statusText = userData.online ? '<span class="text-[#25D366] font-medium">Online</span>' : `<span class="text-gray-500">${formatLastSeen(userData.lastSeen)}</span>`;
 
                     userElement.innerHTML = `
-                        <div class="flex items-center space-x-3">
-                            <img src="${profilePicForList}" alt="Profile" class="w-10 h-10 rounded-full object-cover">
-                            <div>
-                                <div class="font-semibold text-gray-800">${displayNameForList}</div>
-                                <div class="text-sm text-gray-600">Click to chat</div>
-                            </div>
+                        <img src="${profilePicForList}" alt="Profile" class="w-10 h-10 rounded-full object-cover">
+                        <div>
+                            <div class="font-semibold text-gray-800">${displayNameForList}</div>
+                            <div class="text-sm text-gray-600">${statusText}</div>
                         </div>
                     `;
                     userElement.addEventListener('click', () => {
-                        selectChat(userData.uid, displayNameForList, userData.displayName, userData.email, profilePicForList);
+                        selectChat(userData.uid, displayNameForList, userData.displayName, userData.email, profilePicForList, userData.online, userData.lastSeen);
                     });
+
+                    if (selectedChatPartnerId === userData.uid) {
+                        userElement.classList.add('bg-[#E0F2F1]', 'font-bold');
+                    }
                     userList.appendChild(userElement);
                 });
             }
@@ -566,24 +717,66 @@
 
         // Function to invite a user via SMS (assuming identifier is a phone number)
         function inviteUser(identifier) {
-            // This function assumes 'identifier' is a phone number for SMS.
-            // If you want to invite via email, you'd need a different mechanism (e.g., mailto: link).
             const message = encodeURIComponent(`Join me on FalconixTalk! Download the app here: [Your App Link Here]`); // Replace with your actual app link
             window.location.href = `sms:${identifier}?body=${message}`;
         }
 
         // Select a chat (public or personal)
-        function selectChat(partnerId, partnerNameForHeader, partnerDisplayName = null, partnerEmail = null, partnerProfilePic = null) {
+        function selectChat(partnerId, partnerNameForHeader, partnerDisplayName = null, partnerEmail = null, partnerProfilePic = null, partnerOnline = false, partnerLastSeen = null) {
             if (unsubscribeMessages) {
                 unsubscribeMessages(); // Unsubscribe from previous chat listener
             }
+            if (unsubscribePartnerStatus) {
+                unsubscribePartnerStatus(); // Unsubscribe from previous partner status listener
+            }
             messagesContainer.innerHTML = ''; // Clear messages from previous chat
             selectedChatPartnerId = partnerId;
-            selectedChatPartnerDisplayName = partnerDisplayName || partnerEmail || partnerNameForHeader; // Store for display
+            selectedChatPartnerDisplayName = partnerDisplayName || partnerEmail || partnerNameForHeader;
+            selectedChatPartnerProfilePic = partnerProfilePic || DEFAULT_PROFILE_PIC;
+
             chatHeaderName.textContent = partnerNameForHeader;
+            chatPartnerPic.src = selectedChatPartnerProfilePic; // Update header profile pic
+            
+            // Set up real-time listener for partner's online status
+            if (partnerId !== 'public-chat' && db) {
+                const partnerDocRef = doc(db, `artifacts/${appId}/users/${partnerId}`);
+                unsubscribePartnerStatus = onSnapshot(partnerDocRef, (docSnap) => {
+                    if (docSnap.exists()) {
+                        const partnerData = docSnap.data();
+                        chatPartnerStatus.textContent = partnerData.online ? 'Online' : formatLastSeen(partnerData.lastSeen);
+                    } else {
+                        chatPartnerStatus.textContent = 'Offline'; // Partner document not found
+                    }
+                }, (error) => {
+                    console.error("Error listening to partner status:", error);
+                    chatPartnerStatus.textContent = 'Status unavailable';
+                });
+            } else {
+                chatPartnerStatus.textContent = 'Click to chat'; // Public chat status
+            }
+
             messageInput.disabled = false;
             sendButton.disabled = false;
             setupRealtimeMessages(); // Set up new listener for the selected chat
+
+            // Update active state in sidebar
+            document.querySelectorAll('.chat-list-item').forEach(item => {
+                item.classList.remove('bg-[#E0F2F1]', 'font-bold');
+            });
+            const selectedItem = userList.querySelector(`[data-user-id="${partnerId}"]`);
+            if (selectedItem) {
+                selectedItem.classList.add('bg-[#E0F2F1]', 'font-bold');
+            }
+
+            // For mobile: switch to chat view
+            if (window.innerWidth < 768) {
+                appContainer.classList.add('chat-view-active');
+            }
+        }
+
+        // New helper function to get a consistent chat ID for private chats
+        function getPrivateChatId(user1Id, user2Id) {
+            return user1Id < user2Id ? `${user1Id}_${user2Id}` : `${user2Id}_${user1Id}`;
         }
 
         // Set up real-time listener for messages
@@ -593,47 +786,35 @@
                 return;
             }
 
-            const messagesRef = collection(db, `artifacts/${appId}/public/data/messages`);
-
-            let q;
+            let messagesRef;
             if (selectedChatPartnerId === 'public-chat') {
-                q = query(messagesRef, where('receiverId', 'in', [null, 'public-chat']));
+                // Public messages are stored under `public/data/messages`
+                messagesRef = collection(db, `artifacts/${appId}/public/data/messages`);
             } else {
-                // For personal chats, we fetch all messages and filter client-side.
-                // This is a simplification for demo purposes. For large-scale apps,
-                // consider a different Firestore structure (e.g., chat rooms with subcollections)
-                // to optimize queries and avoid reading unnecessary data.
-                q = query(messagesRef);
+                // Private messages are stored in a new `chats` collection
+                const chatId = getPrivateChatId(userId, selectedChatPartnerId);
+                messagesRef = collection(db, `chats/${chatId}/messages`);
             }
+            
+            const q = query(messagesRef, orderBy('timestamp', 'desc'));
 
             console.log("Setting up real-time message listener for chat:", selectedChatPartnerId);
             unsubscribeMessages = onSnapshot(q, (snapshot) => {
-                messagesContainer.innerHTML = ''; // Clear all messages before re-rendering
+                messagesContainer.innerHTML = '';
                 const allMessages = [];
                 snapshot.forEach((doc) => {
                     const messageData = doc.data();
-                    if (selectedChatPartnerId !== 'public-chat') {
-                        const isPersonalMessage = 
-                            (messageData.senderId === userId && messageData.receiverId === selectedChatPartnerId) ||
-                            (messageData.senderId === selectedChatPartnerId && messageData.receiverId === userId);
-                        if (isPersonalMessage) {
-                            allMessages.push({ id: doc.id, ...messageData });
-                        }
-                    } else {
-                        const isPublicMessage = messageData.receiverId === null || messageData.receiverId === 'public-chat';
-                        if (isPublicMessage) {
-                            allMessages.push({ id: doc.id, ...messageData });
-                        }
-                    }
+                    allMessages.push({ id: doc.id, ...messageData });
                 });
 
+                // Sort messages by timestamp in ascending order for correct display order
                 allMessages.sort((a, b) => {
                     if (!a.timestamp || !b.timestamp) return 0;
                     return a.timestamp.toDate().getTime() - b.timestamp.toDate().getTime();
                 });
 
                 allMessages.forEach(msg => displayMessage(msg));
-
+                
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
                 console.log("Messages updated for chat:", selectedChatPartnerId, "Count:", allMessages.length);
             }, (error) => {
@@ -657,15 +838,30 @@
 
             console.log("Sending message...");
             try {
-                await addDoc(collection(db, `artifacts/${appId}/public/data/messages`), {
+                const messageData = {
                     senderId: userId,
-                    senderDisplayName: userName, // Store sender's display name
-                    senderEmail: userEmail, // Store sender's email
-                    senderProfilePicUrl: userProfilePicUrl, // Store sender's profile picture URL
-                    receiverId: selectedChatPartnerId === 'public-chat' ? null : selectedChatPartnerId,
+                    senderDisplayName: userName,
+                    senderEmail: userEmail,
+                    senderProfilePicUrl: userProfilePicUrl,
                     text: messageText,
                     timestamp: serverTimestamp()
-                });
+                };
+
+                if (selectedChatPartnerId === 'public-chat') {
+                    // Send to public chat
+                    await addDoc(collection(db, `artifacts/${appId}/public/data/messages`), {
+                        ...messageData,
+                        receiverId: 'public-chat',
+                    });
+                } else {
+                    // Send to private chat
+                    const chatId = getPrivateChatId(userId, selectedChatPartnerId);
+                    await addDoc(collection(db, `chats/${chatId}/messages`), {
+                        ...messageData,
+                        receiverId: selectedChatPartnerId,
+                    });
+                }
+
                 messageInput.value = '';
                 console.log("Message sent successfully.");
             } catch (error) {
@@ -680,6 +876,25 @@
             if (e.key === 'Enter') {
                 sendMessage();
             }
+        });
+
+        // Mobile back button functionality
+        backButton.addEventListener('click', () => {
+            appContainer.classList.remove('chat-view-active');
+            chatHeaderName.textContent = 'Select a Chat';
+            chatPartnerStatus.textContent = ''; // Clear status on back
+            chatPartnerPic.src = DEFAULT_CHAT_PIC; // Reset partner pic
+            messageInput.disabled = true;
+            sendButton.disabled = true;
+            messagesContainer.innerHTML = '';
+            if (unsubscribeMessages) {
+                unsubscribeMessages();
+            }
+            if (unsubscribePartnerStatus) {
+                unsubscribePartnerStatus();
+            }
+            // Ensure public chat is visually selected when returning to sidebar
+            selectChat('public-chat', 'Public Chat', null, null, "https://placehold.co/40x40/4CAF50/ffffff?text=GC");
         });
 
         // Initialize Firebase on window load

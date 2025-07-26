@@ -199,7 +199,7 @@
         // Import Firebase services
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
         import { getAuth, onAuthStateChanged, signOut, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
-        import { getFirestore, collection, addDoc, query, onSnapshot, serverTimestamp, setDoc, doc, getDoc, updateDoc, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, query, onSnapshot, serverTimestamp, setDoc, doc, getDoc, updateDoc, orderBy, getDocs, increment } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
         import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-storage.js";
 
         // --- Your Specific Firebase Configuration ---
@@ -222,8 +222,11 @@
               allow read: if request.auth != null;
               allow write: if request.auth.uid == userId;
               
-              // NEW: Allow users to manage their own chat list subcollection
               match /chats/{chatPartnerId} {
+                allow read, write: if request.auth.uid == userId;
+              }
+              // NEW: Allow users to manage their unread message counts
+              match /unreadCounts/{partnerId} {
                 allow read, write: if request.auth.uid == userId;
               }
             }
@@ -246,6 +249,8 @@
         let unsubscribePartnerStatus = null;
         let allUsersCache = []; // Cache for all users to enable searching
         let chatListListener = null; // To manage the chat list subscription
+        let unreadCountsListener = null; // Listener for unread counts
+        let unreadCounts = {}; // Local cache for unread counts
 
         // DOM Elements
         const loadingOverlay = document.getElementById('loading-overlay');
@@ -335,6 +340,7 @@
             
             updateUIForUser();
             await fetchAllUsersForSearch();
+            listenToUnreadCounts();
             listenToChatList();
             selectChat('public-chat', 'Public Chat', "https://placehold.co/40x40/4CAF50/ffffff?text=GC");
         }
@@ -348,6 +354,7 @@
             if (unsubscribeMessages) unsubscribeMessages();
             if (unsubscribePartnerStatus) unsubscribePartnerStatus();
             if (chatListListener) chatListListener();
+            if (unreadCountsListener) unreadCountsListener();
             updateUIForGuest();
         }
 
@@ -384,16 +391,30 @@
             const snapshot = await getDocs(query(usersRef));
             allUsersCache = snapshot.docs.map(doc => doc.data()).filter(u => u.uid !== userId);
         }
+        
+        function listenToUnreadCounts() {
+            if (unreadCountsListener) unreadCountsListener();
+            const unreadRef = collection(db, `artifacts/${appId}/users/${userId}/unreadCounts`);
+            unreadCountsListener = onSnapshot(unreadRef, (snapshot) => {
+                unreadCounts = {};
+                snapshot.forEach(doc => {
+                    unreadCounts[doc.id] = doc.data().count;
+                });
+                // Redraw chat list with new counts if not searching
+                if (userSearchInput.value.trim() === '') {
+                    listenToChatList();
+                }
+            });
+        }
 
         function listenToChatList() {
-            if (chatListListener) chatListListener(); // Unsubscribe from previous listener if it exists
+            if (chatListListener) chatListListener();
 
             const chatListRef = collection(db, `artifacts/${appId}/users/${userId}/chats`);
             const q = query(chatListRef, orderBy('lastMessageTimestamp', 'desc'));
 
             chatListListener = onSnapshot(q, (snapshot) => {
                 const chatPartners = snapshot.docs.map(doc => doc.data());
-                // Only display the chat list if the user is not currently searching
                 if (userSearchInput.value.trim() === '') {
                     displayChatList(chatPartners);
                 }
@@ -412,7 +433,8 @@
                 partners.forEach(partner => {
                     const fullPartnerData = allUsersCache.find(u => u.uid === partner.uid) || {};
                     const statusText = fullPartnerData.online ? `<span class="text-[#25D366] font-medium">Online</span>` : `<span class="text-gray-500 dark:text-gray-400">${formatLastSeen(fullPartnerData.lastSeen)}</span>`;
-                    userList.appendChild(createChatListItem({ ...partner, statusText }));
+                    const count = unreadCounts[partner.uid] || 0;
+                    userList.appendChild(createChatListItem({ ...partner, statusText, unreadCount: count }));
                 });
             }
         }
@@ -436,9 +458,9 @@
         userSearchInput.addEventListener('input', (e) => {
             const searchTerm = e.target.value.trim().toLowerCase();
             if (searchTerm === '') {
-                listenToChatList(); // Resubscribe and show the chat list
+                listenToChatList();
             } else {
-                if (chatListListener) chatListListener(); // Unsubscribe from chat list while searching
+                if (chatListListener) chatListListener();
                 const filtered = allUsersCache.filter(user => user.displayName.toLowerCase().includes(searchTerm) || user.email.toLowerCase().includes(searchTerm));
                 displaySearchResults(filtered);
             }
@@ -450,17 +472,23 @@
             if (selectedChatPartnerId === userData.uid) {
                 item.classList.add('bg-[#E0F2F1]', 'dark:bg-[#2A3942]', 'font-bold');
             }
+            
+            const unreadBadge = userData.unreadCount > 0 
+                ? `<span class="ml-auto bg-green-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">${userData.unreadCount}</span>`
+                : '';
+
             item.innerHTML = `
                 <img src="${userData.profilePictureUrl || DEFAULT_PROFILE_PIC}" alt="Profile" class="w-10 h-10 rounded-full object-cover flex-shrink-0">
                 <div class="min-w-0 flex-grow">
                     <div class="font-semibold text-gray-800 dark:text-gray-200 truncate">${userData.displayName}</div>
                     <div class="text-sm text-gray-500 dark:text-gray-400 truncate">${userData.statusText || ''}</div>
-                </div>`;
+                </div>
+                ${unreadBadge}`;
             item.addEventListener('click', () => selectChat(userData.uid, userData.displayName, userData.profilePictureUrl));
             return item;
         }
 
-        function selectChat(partnerId, partnerName, partnerPic) {
+        async function selectChat(partnerId, partnerName, partnerPic) {
             if (selectedChatPartnerId === partnerId && appContainer.classList.contains('chat-view-active')) return;
 
             selectedChatPartnerId = partnerId;
@@ -475,7 +503,6 @@
             messageInput.disabled = false;
             sendButton.disabled = false;
             
-            // Redraw the list to highlight the new selection
             if (userSearchInput.value.trim() === '') {
                 listenToChatList();
             } else {
@@ -487,6 +514,10 @@
             if (partnerId === 'public-chat') {
                 chatPartnerStatus.textContent = 'Everyone is here';
             } else {
+                // Clear unread count when opening a chat
+                const unreadCountRef = doc(db, `artifacts/${appId}/users/${userId}/unreadCounts/${partnerId}`);
+                await setDoc(unreadCountRef, { count: 0 });
+
                 const partnerDocRef = doc(db, `artifacts/${appId}/users/${partnerId}`);
                 unsubscribePartnerStatus = onSnapshot(partnerDocRef, (docSnap) => {
                     if (docSnap.exists()) {
@@ -528,26 +559,26 @@
             const text = messageInput.value.trim();
             if (text === '' || !userId) return;
 
-            // If this is the first message in a private chat, create the chat list entries for both users
             if (selectedChatPartnerId !== 'public-chat') {
                 const myChatListRef = doc(db, `artifacts/${appId}/users/${userId}/chats/${selectedChatPartnerId}`);
+                const partnerChatListRef = doc(db, `artifacts/${appId}/users/${selectedChatPartnerId}/chats/${userId}`);
+                const partnerUnreadCountRef = doc(db, `artifacts/${appId}/users/${selectedChatPartnerId}/unreadCounts/${userId}`);
+
                 const chatDoc = await getDoc(myChatListRef);
 
                 if (!chatDoc.exists()) {
                     const partnerInfo = allUsersCache.find(u => u.uid === selectedChatPartnerId);
                     if (partnerInfo) {
-                        // Add partner to my chat list
                         await setDoc(myChatListRef, { uid: partnerInfo.uid, displayName: partnerInfo.displayName, profilePictureUrl: partnerInfo.profilePictureUrl, lastMessageTimestamp: serverTimestamp() });
-                        // Add myself to partner's chat list
-                        const partnerChatListRef = doc(db, `artifacts/${appId}/users/${selectedChatPartnerId}/chats/${userId}`);
                         await setDoc(partnerChatListRef, { uid: userId, displayName: userName, profilePictureUrl: userProfilePicUrl, lastMessageTimestamp: serverTimestamp() });
                     }
                 } else {
-                     // Update timestamp on existing chats to bring them to the top of the list
                     await updateDoc(myChatListRef, { lastMessageTimestamp: serverTimestamp() });
-                    const partnerChatListRef = doc(db, `artifacts/${appId}/users/${selectedChatPartnerId}/chats/${userId}`);
-                     await updateDoc(partnerChatListRef, { lastMessageTimestamp: serverTimestamp() });
+                    await updateDoc(partnerChatListRef, { lastMessageTimestamp: serverTimestamp() });
                 }
+                
+                // Increment unread count for the recipient
+                await setDoc(partnerUnreadCountRef, { count: increment(1) }, { merge: true });
             }
             
             const messageData = { senderId: userId, senderDisplayName: userName, text: text, timestamp: serverTimestamp() };
@@ -623,7 +654,6 @@
         // Back button for mobile
         backButton.addEventListener('click', () => {
             appContainer.classList.remove('chat-view-active');
-            // When going back, reset to a neutral state or select public chat by default
             selectChat('public-chat', 'Public Chat', "https://placehold.co/40x40/4CAF50/ffffff?text=GC");
         });
 

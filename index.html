@@ -139,7 +139,6 @@
             <!-- Sidebar Header -->
             <div class="p-4 bg-[#128C7E] dark:bg-[#202C33] text-white flex items-center justify-between shadow-md">
                 <h1 class="text-xl md:text-2xl font-bold">FalconixTalk</h1>
-                <!-- Right side controls grouped for better mobile layout -->
                 <div class="flex items-center space-x-2 md:space-x-3">
                     <button id="theme-toggle-button" class="p-2 rounded-full text-white hover:bg-[#075E54] dark:hover:bg-[#2A3942] focus:outline-none transition-colors">
                         <svg id="theme-toggle-dark-icon" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
@@ -157,9 +156,9 @@
             </div>
             <!-- Search Bar -->
             <div class="p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-[#202C33] shadow-sm">
-                <input type="text" id="user-search-input" placeholder="Search by name or email" class="w-full p-2.5 rounded-lg bg-gray-100 dark:bg-[#2A3942] border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#25D366] transition duration-200">
+                <input type="text" id="user-search-input" placeholder="Search to start a new chat" class="w-full p-2.5 rounded-lg bg-gray-100 dark:bg-[#2A3942] border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#25D366] transition duration-200">
             </div>
-            <!-- User List -->
+            <!-- User/Chat List -->
             <div id="user-list" class="flex-grow overflow-y-auto chat-list"></div>
         </div>
 
@@ -195,7 +194,7 @@
         // Import Firebase services
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
         import { getAuth, onAuthStateChanged, signOut, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
-        import { getFirestore, collection, addDoc, query, onSnapshot, serverTimestamp, setDoc, doc, getDoc, updateDoc, orderBy } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, query, onSnapshot, serverTimestamp, setDoc, doc, getDoc, updateDoc, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
         import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-storage.js";
 
         // --- Your Specific Firebase Configuration ---
@@ -217,6 +216,11 @@
             match /artifacts/{appId}/users/{userId} {
               allow read: if request.auth != null;
               allow write: if request.auth.uid == userId;
+              
+              // NEW: Allow users to manage their own chat list subcollection
+              match /chats/{chatPartnerId} {
+                allow read, write: if request.auth.uid == userId;
+              }
             }
             match /artifacts/{appId}/public/data/messages/{messageId} {
                 allow read, write: if request.auth != null;
@@ -235,7 +239,8 @@
         let selectedChatPartnerId = null;
         let unsubscribeMessages = null;
         let unsubscribePartnerStatus = null;
-        let allUsers = [];
+        let allUsersCache = []; // Cache for all users to enable searching
+        let chatListListener = null; // To manage the chat list subscription
 
         // DOM Elements
         const loadingOverlay = document.getElementById('loading-overlay');
@@ -316,14 +321,7 @@
             
             if (!userDocSnap.exists()) {
                 userProfilePicUrl = user.photoURL || DEFAULT_PROFILE_PIC;
-                await setDoc(userDocRef, {
-                    uid: userId,
-                    displayName: userName,
-                    email: userEmail,
-                    profilePictureUrl: userProfilePicUrl,
-                    online: true,
-                    lastSeen: serverTimestamp()
-                });
+                await setDoc(userDocRef, { uid: userId, displayName: userName, email: userEmail, profilePictureUrl: userProfilePicUrl, online: true, lastSeen: serverTimestamp() });
             } else {
                 const userData = userDocSnap.data();
                 userProfilePicUrl = userData.profilePictureUrl || DEFAULT_PROFILE_PIC;
@@ -331,7 +329,8 @@
             }
             
             updateUIForUser();
-            await loadAndDisplayUsers();
+            await fetchAllUsersForSearch();
+            listenToChatList();
             selectChat('public-chat', 'Public Chat', "https://placehold.co/40x40/4CAF50/ffffff?text=GC");
         }
 
@@ -343,6 +342,7 @@
             userId = null;
             if (unsubscribeMessages) unsubscribeMessages();
             if (unsubscribePartnerStatus) unsubscribePartnerStatus();
+            if (chatListListener) chatListListener();
             updateUIForGuest();
         }
 
@@ -374,32 +374,70 @@
         }
 
         // --- User & Chat Management ---
-        async function loadAndDisplayUsers() {
+        async function fetchAllUsersForSearch() {
             const usersRef = collection(db, `artifacts/${appId}/users`);
-            onSnapshot(query(usersRef), (snapshot) => {
-                allUsers = snapshot.docs.map(doc => doc.data()).filter(u => u.uid !== userId);
-                allUsers.sort((a, b) => (b.online - a.online) || a.displayName.localeCompare(b.displayName));
-                displayUsers(allUsers);
+            const snapshot = await getDocs(query(usersRef));
+            allUsersCache = snapshot.docs.map(doc => doc.data()).filter(u => u.uid !== userId);
+        }
+
+        function listenToChatList() {
+            if (chatListListener) chatListListener(); // Unsubscribe from previous listener if it exists
+
+            const chatListRef = collection(db, `artifacts/${appId}/users/${userId}/chats`);
+            const q = query(chatListRef, orderBy('lastMessageTimestamp', 'desc'));
+
+            chatListListener = onSnapshot(q, (snapshot) => {
+                const chatPartners = snapshot.docs.map(doc => doc.data());
+                // Only display the chat list if the user is not currently searching
+                if (userSearchInput.value.trim() === '') {
+                    displayChatList(chatPartners);
+                }
             });
         }
 
-        function displayUsers(usersToDisplay) {
-            userList.innerHTML = ''; // Clear list
-            // Add Public Chat
-            userList.appendChild(createChatListItem({
-                uid: 'public-chat',
-                displayName: 'Public Chat',
-                profilePictureUrl: "https://placehold.co/40x40/4CAF50/ffffff?text=GC",
-                statusText: 'Chat with everyone!'
-            }));
-            // Add other users
-            usersToDisplay.forEach(userData => {
-                const statusText = userData.online 
-                    ? `<span class="text-[#25D366] font-medium">Online</span>` 
-                    : `<span class="text-gray-500 dark:text-gray-400">${formatLastSeen(userData.lastSeen)}</span>`;
-                userList.appendChild(createChatListItem({ ...userData, statusText }));
-            });
+        function displayChatList(partners) {
+            userList.innerHTML = '';
+            userList.appendChild(createChatListItem({ uid: 'public-chat', displayName: 'Public Chat', profilePictureUrl: "https://placehold.co/40x40/4CAF50/ffffff?text=GC", statusText: 'Chat with everyone!' }));
+            if (partners.length === 0) {
+                 const placeholder = document.createElement('div');
+                 placeholder.className = "p-4 text-center text-sm text-gray-500 dark:text-gray-400";
+                 placeholder.textContent = "Search for users to start a new chat.";
+                 userList.appendChild(placeholder);
+            } else {
+                partners.forEach(partner => {
+                    const fullPartnerData = allUsersCache.find(u => u.uid === partner.uid) || {};
+                    const statusText = fullPartnerData.online ? `<span class="text-[#25D366] font-medium">Online</span>` : `<span class="text-gray-500 dark:text-gray-400">${formatLastSeen(fullPartnerData.lastSeen)}</span>`;
+                    userList.appendChild(createChatListItem({ ...partner, statusText }));
+                });
+            }
         }
+        
+        function displaySearchResults(results) {
+            userList.innerHTML = '';
+            userList.appendChild(createChatListItem({ uid: 'public-chat', displayName: 'Public Chat', profilePictureUrl: "https://placehold.co/40x40/4CAF50/ffffff?text=GC", statusText: 'Chat with everyone!' }));
+            if (results.length === 0) {
+                 const placeholder = document.createElement('div');
+                 placeholder.className = "p-4 text-center text-sm text-gray-500 dark:text-gray-400";
+                 placeholder.textContent = "No users found.";
+                 userList.appendChild(placeholder);
+            } else {
+                results.forEach(user => {
+                    const statusText = user.online ? `<span class="text-[#25D366] font-medium">Online</span>` : `<span class="text-gray-500 dark:text-gray-400">${formatLastSeen(user.lastSeen)}</span>`;
+                    userList.appendChild(createChatListItem({ ...user, statusText }));
+                });
+            }
+        }
+
+        userSearchInput.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.trim().toLowerCase();
+            if (searchTerm === '') {
+                listenToChatList(); // Resubscribe and show the chat list
+            } else {
+                if (chatListListener) chatListListener(); // Unsubscribe from chat list while searching
+                const filtered = allUsersCache.filter(user => user.displayName.toLowerCase().includes(searchTerm) || user.email.toLowerCase().includes(searchTerm));
+                displaySearchResults(filtered);
+            }
+        });
 
         function createChatListItem(userData) {
             const item = document.createElement('div');
@@ -409,25 +447,16 @@
             }
             item.innerHTML = `
                 <img src="${userData.profilePictureUrl || DEFAULT_PROFILE_PIC}" alt="Profile" class="w-10 h-10 rounded-full object-cover flex-shrink-0">
-                <div class="min-w-0">
+                <div class="min-w-0 flex-grow">
                     <div class="font-semibold text-gray-800 dark:text-gray-200 truncate">${userData.displayName}</div>
-                    <div class="text-sm text-gray-500 dark:text-gray-400 truncate">${userData.statusText}</div>
+                    <div class="text-sm text-gray-500 dark:text-gray-400 truncate">${userData.statusText || ''}</div>
                 </div>`;
             item.addEventListener('click', () => selectChat(userData.uid, userData.displayName, userData.profilePictureUrl));
             return item;
         }
 
-        userSearchInput.addEventListener('input', (e) => {
-            const searchTerm = e.target.value.toLowerCase();
-            const filtered = allUsers.filter(user => 
-                user.displayName.toLowerCase().includes(searchTerm) || 
-                user.email.toLowerCase().includes(searchTerm)
-            );
-            displayUsers(filtered);
-        });
-
         function selectChat(partnerId, partnerName, partnerPic) {
-            if (selectedChatPartnerId === partnerId) return;
+            if (selectedChatPartnerId === partnerId && appContainer.classList.contains('chat-view-active')) return;
 
             selectedChatPartnerId = partnerId;
             
@@ -440,7 +469,15 @@
             messagesContainer.innerHTML = '';
             messageInput.disabled = false;
             sendButton.disabled = false;
-            displayUsers(allUsers); 
+            
+            // Redraw the list to highlight the new selection
+            if (userSearchInput.value.trim() === '') {
+                listenToChatList();
+            } else {
+                const searchTerm = userSearchInput.value.trim().toLowerCase();
+                const filtered = allUsersCache.filter(user => user.displayName.toLowerCase().includes(searchTerm) || user.email.toLowerCase().includes(searchTerm));
+                displaySearchResults(filtered);
+            }
             
             if (partnerId === 'public-chat') {
                 chatPartnerStatus.textContent = 'Everyone is here';
@@ -486,13 +523,29 @@
             const text = messageInput.value.trim();
             if (text === '' || !userId) return;
 
-            const messageData = {
-                senderId: userId,
-                senderDisplayName: userName,
-                text: text,
-                timestamp: serverTimestamp()
-            };
+            // If this is the first message in a private chat, create the chat list entries for both users
+            if (selectedChatPartnerId !== 'public-chat') {
+                const myChatListRef = doc(db, `artifacts/${appId}/users/${userId}/chats/${selectedChatPartnerId}`);
+                const chatDoc = await getDoc(myChatListRef);
 
+                if (!chatDoc.exists()) {
+                    const partnerInfo = allUsersCache.find(u => u.uid === selectedChatPartnerId);
+                    if (partnerInfo) {
+                        // Add partner to my chat list
+                        await setDoc(myChatListRef, { uid: partnerInfo.uid, displayName: partnerInfo.displayName, profilePictureUrl: partnerInfo.profilePictureUrl, lastMessageTimestamp: serverTimestamp() });
+                        // Add myself to partner's chat list
+                        const partnerChatListRef = doc(db, `artifacts/${appId}/users/${selectedChatPartnerId}/chats/${userId}`);
+                        await setDoc(partnerChatListRef, { uid: userId, displayName: userName, profilePictureUrl: userProfilePicUrl, lastMessageTimestamp: serverTimestamp() });
+                    }
+                } else {
+                     // Update timestamp on existing chats to bring them to the top of the list
+                    await updateDoc(myChatListRef, { lastMessageTimestamp: serverTimestamp() });
+                    const partnerChatListRef = doc(db, `artifacts/${appId}/users/${selectedChatPartnerId}/chats/${userId}`);
+                     await updateDoc(partnerChatListRef, { lastMessageTimestamp: serverTimestamp() });
+                }
+            }
+            
+            const messageData = { senderId: userId, senderDisplayName: userName, text: text, timestamp: serverTimestamp() };
             let messagesRef;
             if (selectedChatPartnerId === 'public-chat') {
                 messagesRef = collection(db, `artifacts/${appId}/public/data/messages`);
@@ -522,7 +575,7 @@
                 ${isSender ? 'bg-[#DCF8C6] dark:bg-[#005C4B] self-end rounded-br-none' : 'bg-white dark:bg-[#202C33] self-start rounded-bl-none'}
                 ${isSender ? 'flex-row-reverse' : ''}`;
             
-            const senderUser = isSender ? { displayName: 'You' } : allUsers.find(u => u.uid === data.senderId) || { displayName: 'Unknown User' };
+            const senderUser = isSender ? { displayName: 'You' } : allUsersCache.find(u => u.uid === data.senderId) || { displayName: 'Unknown User' };
 
             msgDiv.innerHTML = `
                 <div class="flex flex-col ${isSender ? 'items-end' : 'items-start'} min-w-0">
@@ -565,7 +618,6 @@
         // Back button for mobile
         backButton.addEventListener('click', () => {
             appContainer.classList.remove('chat-view-active');
-            // When going back, reset to a neutral state or select public chat by default
             selectChat('public-chat', 'Public Chat', "https://placehold.co/40x40/4CAF50/ffffff?text=GC");
         });
 

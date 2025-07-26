@@ -252,30 +252,41 @@
 
         // Initialize Firebase and set up authentication
         async function initializeFirebase() {
+            console.log("Initializing Firebase...");
             try {
                 app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
                 storage = getStorage(app); // Initialize Firebase Storage
+                console.log("Firebase services initialized.");
 
                 // Listen for auth state changes
                 onAuthStateChanged(auth, async (user) => {
+                    console.log("Auth state changed. User:", user);
                     if (user) {
                         userId = user.uid;
                         userName = user.displayName; // Get display name from Google profile
                         userEmail = user.email; // Get email from Google profile
-                        userIdDisplay.textContent = userId.substring(0, 8) + '...';
-                        currentUserDisplayName.textContent = userName || userEmail || 'Guest'; // Display user's name
+                        
+                        // Null checks for DOM elements
+                        if (userIdDisplay) {
+                            userIdDisplay.textContent = userId.substring(0, 8) + '...';
+                        }
+                        if (currentUserDisplayName) {
+                            currentUserDisplayName.textContent = userName || userEmail || 'Guest'; // Display user's name
+                        }
 
                         isAuthReady = true;
                         authContainer.classList.add('hidden');
                         appContainer.classList.remove('hidden');
                         loadingOverlay.classList.add('hidden');
+                        console.log("User authenticated:", userId);
 
                         // Save user details to Firestore if not already present
                         const userDocRef = doc(db, `artifacts/${appId}/users/${userId}`);
                         const userDocSnap = await getDoc(userDocRef);
                         if (!userDocSnap.exists()) {
+                            console.log("New user. Saving details to Firestore.");
                             await setDoc(userDocRef, {
                                 uid: userId,
                                 displayName: userName, // Store display name
@@ -285,27 +296,43 @@
                             });
                             userProfilePicUrl = user.photoURL || DEFAULT_PROFILE_PIC;
                         } else {
+                            console.log("Existing user. Loading profile from Firestore.");
                             // If user exists, update local state with their Firestore data
                             const userData = userDocSnap.data();
                             userProfilePicUrl = userData.profilePictureUrl || DEFAULT_PROFILE_PIC;
                             userName = userData.displayName || userName; // Use Firestore displayName if available
                             userEmail = userData.email || userEmail; // Use Firestore email if available
-                            currentUserDisplayName.textContent = userName || userEmail || 'Guest';
+                            if (currentUserDisplayName) { // Re-check in case it was null initially
+                                currentUserDisplayName.textContent = userName || userEmail || 'Guest';
+                            }
                         }
-                        userProfilePic.src = userProfilePicUrl; // Set profile picture in header
+                        if (userProfilePic) { // Null check
+                            userProfilePic.src = userProfilePicUrl; // Set profile picture in header
+                        }
                         
                         await loadUsers(); // Load all users for the sidebar and caching
                         // Initial chat selection (e.g., public chat or first contact)
                         selectChat('public-chat', 'Public Chat');
+                        console.log("Application ready.");
 
                     } else {
+                        console.log("User not authenticated. Showing login screen.");
                         userId = null;
                         userName = null;
                         userEmail = null;
                         userProfilePicUrl = null;
-                        userIdDisplay.textContent = 'Not Authenticated';
-                        currentUserDisplayName.textContent = '';
-                        userProfilePic.src = DEFAULT_PROFILE_PIC; // Reset profile pic to default
+
+                        // Null checks for DOM elements when not authenticated
+                        if (userIdDisplay) {
+                            userIdDisplay.textContent = 'Not Authenticated';
+                        }
+                        if (currentUserDisplayName) {
+                            currentUserDisplayName.textContent = '';
+                        }
+                        if (userProfilePic) {
+                            userProfilePic.src = DEFAULT_PROFILE_PIC; // Reset profile pic to default
+                        }
+
                         isAuthReady = false;
                         loadingOverlay.classList.add('hidden');
                         appContainer.classList.add('hidden');
@@ -331,9 +358,11 @@
         googleSignInButton.addEventListener('click', async () => {
             authMessage.textContent = '';
             loadingOverlay.classList.remove('hidden');
+            console.log("Google Sign-In button clicked.");
             try {
                 const provider = new GoogleAuthProvider();
                 await signInWithPopup(auth, provider);
+                console.log("Google Sign-In popup initiated.");
             } catch (error) {
                 console.error("Error signing in with Google:", error);
                 if (error.code === 'auth/popup-closed-by-user') {
@@ -373,6 +402,7 @@
             }
 
             loadingOverlay.classList.remove('hidden'); // Show loading spinner
+            console.log("Uploading profile picture:", file.name);
             try {
                 const storageRef = ref(storage, `profile_pictures/${userId}/${file.name}`);
                 const snapshot = await uploadBytes(storageRef, file);
@@ -383,8 +413,11 @@
                 await setDoc(userDocRef, { profilePictureUrl: downloadURL }, { merge: true });
 
                 userProfilePicUrl = downloadURL; // Update local state
-                userProfilePic.src = downloadURL; // Update displayed image
+                if (userProfilePic) { // Null check
+                    userProfilePic.src = downloadURL; // Update displayed image
+                }
                 showMessageBox("Profile picture updated successfully!");
+                console.log("Profile picture uploaded and URL saved:", downloadURL);
             } catch (error) {
                 console.error("Error uploading profile picture:", error);
                 showMessageBox(`Failed to upload profile picture: ${error.message}`, 'error');
@@ -444,6 +477,7 @@
                 </div>
             `; // Clear and re-add public chat
 
+            console.log("Loading users from Firestore...");
             try {
                 const usersRef = collection(db, `artifacts/${appId}/users`);
                 const q = query(usersRef);
@@ -456,6 +490,7 @@
                     }
                 });
                 displayUsers(allUsers); // Display all loaded users initially
+                console.log("Users loaded:", allUsers.length);
             } catch (error) {
                 console.error("Error loading users:", error);
                 showMessageBox(`Error loading users: ${error.message}`, 'error');
@@ -571,6 +606,7 @@
                 q = query(messagesRef);
             }
 
+            console.log("Setting up real-time message listener for chat:", selectedChatPartnerId);
             unsubscribeMessages = onSnapshot(q, (snapshot) => {
                 messagesContainer.innerHTML = ''; // Clear all messages before re-rendering
                 const allMessages = [];
@@ -599,6 +635,7 @@
                 allMessages.forEach(msg => displayMessage(msg));
 
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                console.log("Messages updated for chat:", selectedChatPartnerId, "Count:", allMessages.length);
             }, (error) => {
                 console.error("Error listening to messages:", error);
                 showMessageBox(`Error loading messages: ${error.message}`, 'error');
@@ -618,6 +655,7 @@
                 return;
             }
 
+            console.log("Sending message...");
             try {
                 await addDoc(collection(db, `artifacts/${appId}/public/data/messages`), {
                     senderId: userId,
@@ -629,6 +667,7 @@
                     timestamp: serverTimestamp()
                 });
                 messageInput.value = '';
+                console.log("Message sent successfully.");
             } catch (error) {
                 console.error("Error sending message:", error);
                 showMessageBox(`Failed to send message: ${error.message}`, 'error');

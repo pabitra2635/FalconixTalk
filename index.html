@@ -124,7 +124,14 @@
             <div class="p-4 bg-green-600 text-white flex items-center justify-between rounded-tl-lg">
                 <h1 class="text-xl font-semibold">FalconixTalk</h1>
                 <div class="flex items-center space-x-3">
-                    <span class="text-sm font-medium">User ID: <span id="user-id-display"></span></span>
+                    <!-- Profile Picture and Name -->
+                    <div class="flex items-center space-x-2">
+                        <label for="profile-picture-upload" class="cursor-pointer">
+                            <img id="user-profile-pic" src="https://placehold.co/40x40/cccccc/ffffff?text=U" alt="Profile" class="w-10 h-10 rounded-full border-2 border-white object-cover">
+                            <input type="file" id="profile-picture-upload" accept="image/*" class="hidden">
+                        </label>
+                        <span class="text-sm font-medium" id="current-user-display-name"></span>
+                    </div>
                     <button id="logout-button" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md text-sm">Logout</button>
                 </div>
             </div>
@@ -172,6 +179,8 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
         import { getAuth, onAuthStateChanged, signOut, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
         import { getFirestore, collection, addDoc, query, where, onSnapshot, serverTimestamp, setDoc, doc, getDoc, getDocs } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-storage.js";
+
 
         // Your web app's Firebase configuration
         const firebaseConfig = {
@@ -190,9 +199,11 @@
         let app;
         let db;
         let auth;
+        let storage; // Firebase Storage instance
         let userId = null;
         let userName = null; // Store user's display name from Google
         let userEmail = null; // Store user's email
+        let userProfilePicUrl = null; // Store user's profile picture URL
         let isAuthReady = false;
         let selectedChatPartnerId = 'public-chat'; // Default to public chat
         let selectedChatPartnerDisplayName = 'Public Chat'; // Default for display
@@ -213,6 +224,13 @@
         const chatHeaderName = document.getElementById('chat-header-name');
         const logoutButton = document.getElementById('logout-button');
         const userSearchInput = document.getElementById('user-search-input');
+        const userProfilePic = document.getElementById('user-profile-pic'); // New: User's own profile pic display
+        const profilePictureUpload = document.getElementById('profile-picture-upload'); // New: File input for profile pic
+        const currentUserDisplayName = document.getElementById('current-user-display-name'); // New: User's own display name
+
+        // Default profile picture placeholder
+        const DEFAULT_PROFILE_PIC = "https://placehold.co/40x40/cccccc/ffffff?text=U";
+        const DEFAULT_CHAT_PIC = "https://placehold.co/32x32/cccccc/ffffff?text=U"; // Smaller for chat messages
 
         // Function to show a custom message box (instead of alert)
         function showMessageBox(message, type = 'info') {
@@ -238,6 +256,7 @@
                 app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
+                storage = getStorage(app); // Initialize Firebase Storage
 
                 // Listen for auth state changes
                 onAuthStateChanged(auth, async (user) => {
@@ -246,6 +265,8 @@
                         userName = user.displayName; // Get display name from Google profile
                         userEmail = user.email; // Get email from Google profile
                         userIdDisplay.textContent = userId.substring(0, 8) + '...';
+                        currentUserDisplayName.textContent = userName || userEmail || 'Guest'; // Display user's name
+
                         isAuthReady = true;
                         authContainer.classList.add('hidden');
                         appContainer.classList.remove('hidden');
@@ -259,9 +280,19 @@
                                 uid: userId,
                                 displayName: userName, // Store display name
                                 email: userEmail, // Store email
+                                profilePictureUrl: user.photoURL || DEFAULT_PROFILE_PIC, // Store Google profile pic or default
                                 createdAt: serverTimestamp()
                             });
+                            userProfilePicUrl = user.photoURL || DEFAULT_PROFILE_PIC;
+                        } else {
+                            // If user exists, update local state with their Firestore data
+                            const userData = userDocSnap.data();
+                            userProfilePicUrl = userData.profilePictureUrl || DEFAULT_PROFILE_PIC;
+                            userName = userData.displayName || userName; // Use Firestore displayName if available
+                            userEmail = userData.email || userEmail; // Use Firestore email if available
+                            currentUserDisplayName.textContent = userName || userEmail || 'Guest';
                         }
+                        userProfilePic.src = userProfilePicUrl; // Set profile picture in header
                         
                         await loadUsers(); // Load all users for the sidebar and caching
                         // Initial chat selection (e.g., public chat or first contact)
@@ -271,7 +302,10 @@
                         userId = null;
                         userName = null;
                         userEmail = null;
+                        userProfilePicUrl = null;
                         userIdDisplay.textContent = 'Not Authenticated';
+                        currentUserDisplayName.textContent = '';
+                        userProfilePic.src = DEFAULT_PROFILE_PIC; // Reset profile pic to default
                         isAuthReady = false;
                         loadingOverlay.classList.add('hidden');
                         appContainer.classList.add('hidden');
@@ -299,11 +333,7 @@
             loadingOverlay.classList.remove('hidden');
             try {
                 const provider = new GoogleAuthProvider();
-                // signInWithPopup is used here. On mobile, popups might be blocked or
-                // behave unexpectedly. If issues persist, consider Firebase's signInWithRedirect
-                // for a better mobile experience, though it requires more complex state handling.
                 await signInWithPopup(auth, provider);
-                // User is signed in, onAuthStateChanged listener will handle UI update
             } catch (error) {
                 console.error("Error signing in with Google:", error);
                 if (error.code === 'auth/popup-closed-by-user') {
@@ -330,6 +360,40 @@
             }
         });
 
+        // Handle profile picture upload
+        profilePictureUpload.addEventListener('change', async (event) => {
+            const file = event.target.files[0];
+            if (!file) {
+                return;
+            }
+
+            if (!userId) {
+                showMessageBox("Please log in to upload a profile picture.", 'error');
+                return;
+            }
+
+            loadingOverlay.classList.remove('hidden'); // Show loading spinner
+            try {
+                const storageRef = ref(storage, `profile_pictures/${userId}/${file.name}`);
+                const snapshot = await uploadBytes(storageRef, file);
+                const downloadURL = await getDownloadURL(snapshot.ref);
+
+                // Update user's Firestore document with the new profile picture URL
+                const userDocRef = doc(db, `artifacts/${appId}/users/${userId}`);
+                await setDoc(userDocRef, { profilePictureUrl: downloadURL }, { merge: true });
+
+                userProfilePicUrl = downloadURL; // Update local state
+                userProfilePic.src = downloadURL; // Update displayed image
+                showMessageBox("Profile picture updated successfully!");
+            } catch (error) {
+                console.error("Error uploading profile picture:", error);
+                showMessageBox(`Failed to upload profile picture: ${error.message}`, 'error');
+            } finally {
+                loadingOverlay.classList.add('hidden'); // Hide loading spinner
+            }
+        });
+
+
         // Function to display a message in the chat
         function displayMessage(messageData) {
             const messageElement = document.createElement('div');
@@ -338,20 +402,28 @@
             const textColor = isSender ? 'text-gray-800' : 'text-gray-700';
             
             let senderDisplayName;
+            let senderProfilePic = DEFAULT_CHAT_PIC;
+
             if (isSender) {
                 senderDisplayName = 'You';
+                senderProfilePic = userProfilePicUrl || DEFAULT_CHAT_PIC;
             } else {
-                // Prioritize displayName, then email, then truncated UID
+                // Find the sender in allUsers cache to get their profile picture
+                const senderUser = allUsers.find(user => user.uid === messageData.senderId);
                 senderDisplayName = messageData.senderDisplayName || messageData.senderEmail || `User: ${messageData.senderId.substring(0, 8)}...`;
+                senderProfilePic = (senderUser && senderUser.profilePictureUrl) ? senderUser.profilePictureUrl : DEFAULT_CHAT_PIC;
             }
 
             const timestamp = messageData.timestamp ? new Date(messageData.timestamp.toDate()).toLocaleString() : 'Just now';
 
-            messageElement.className = `max-w-[70%] p-3 my-1 rounded-xl shadow-sm ${messageClass} ${textColor}`;
+            messageElement.className = `flex items-start p-2 my-1 rounded-xl shadow-sm ${messageClass} ${textColor} ${isSender ? 'flex-row-reverse' : ''}`;
             messageElement.innerHTML = `
-                <div class="font-semibold text-xs mb-1 ${isSender ? 'text-right' : 'text-left'}">${senderDisplayName}</div>
-                <p class="break-words">${messageData.text}</p>
-                <div class="text-right text-xs text-gray-500 mt-1">${timestamp}</div>
+                <img src="${senderProfilePic}" alt="Profile" class="w-8 h-8 rounded-full object-cover ${isSender ? 'ml-2' : 'mr-2'}">
+                <div class="flex flex-col">
+                    <div class="font-semibold text-xs mb-1 ${isSender ? 'text-right' : 'text-left'}">${senderDisplayName}</div>
+                    <p class="break-words">${messageData.text}</p>
+                    <div class="text-right text-xs text-gray-500 mt-1">${timestamp}</div>
+                </div>
             `;
             messagesContainer.prepend(messageElement); // Prepend to show latest at bottom (due to flex-col-reverse)
         }
@@ -362,8 +434,13 @@
 
             userList.innerHTML = `
                 <div class="p-4 border-b border-gray-300 bg-green-100 cursor-pointer hover:bg-green-200" data-user-id="public-chat">
-                    <div class="font-semibold text-gray-800">Public Chat</div>
-                    <div class="text-sm text-gray-600">Chat with everyone!</div>
+                    <div class="flex items-center space-x-3">
+                        <img src="${DEFAULT_PROFILE_PIC}" alt="Public Chat" class="w-10 h-10 rounded-full object-cover">
+                        <div>
+                            <div class="font-semibold text-gray-800">Public Chat</div>
+                            <div class="text-sm text-gray-600">Chat with everyone!</div>
+                        </div>
+                    </div>
                 </div>
             `; // Clear and re-add public chat
 
@@ -418,13 +495,19 @@
                     userElement.setAttribute('data-email', userData.email || '');
                     
                     let displayNameForList = userData.displayName || userData.email || `User: ${userData.uid.substring(0, 8)}...`;
+                    let profilePicForList = userData.profilePictureUrl || DEFAULT_PROFILE_PIC;
 
                     userElement.innerHTML = `
-                        <div class="font-semibold text-gray-800">${displayNameForList}</div>
-                        <div class="text-sm text-gray-600">Click to chat</div>
+                        <div class="flex items-center space-x-3">
+                            <img src="${profilePicForList}" alt="Profile" class="w-10 h-10 rounded-full object-cover">
+                            <div>
+                                <div class="font-semibold text-gray-800">${displayNameForList}</div>
+                                <div class="text-sm text-gray-600">Click to chat</div>
+                            </div>
+                        </div>
                     `;
                     userElement.addEventListener('click', () => {
-                        selectChat(userData.uid, displayNameForList, userData.displayName, userData.email);
+                        selectChat(userData.uid, displayNameForList, userData.displayName, userData.email, profilePicForList);
                     });
                     userList.appendChild(userElement);
                 });
@@ -455,7 +538,7 @@
         }
 
         // Select a chat (public or personal)
-        function selectChat(partnerId, partnerNameForHeader, partnerDisplayName = null, partnerEmail = null) {
+        function selectChat(partnerId, partnerNameForHeader, partnerDisplayName = null, partnerEmail = null, partnerProfilePic = null) {
             if (unsubscribeMessages) {
                 unsubscribeMessages(); // Unsubscribe from previous chat listener
             }
@@ -540,6 +623,7 @@
                     senderId: userId,
                     senderDisplayName: userName, // Store sender's display name
                     senderEmail: userEmail, // Store sender's email
+                    senderProfilePicUrl: userProfilePicUrl, // Store sender's profile picture URL
                     receiverId: selectedChatPartnerId === 'public-chat' ? null : selectedChatPartnerId,
                     text: messageText,
                     timestamp: serverTimestamp()

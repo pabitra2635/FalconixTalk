@@ -4,50 +4,40 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FalconixTalk - WhatsApp Style</title>
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        /* Base styles for light and dark mode */
         body {
             font-family: 'Inter', sans-serif;
             margin: 0;
             padding: 0;
-            overflow: hidden; /* Prevent body scroll */
-            background-color: #ECE5DD; /* Default light background */
+            overflow: hidden;
+            background-color: #ECE5DD; /* Light mode page background */
         }
-        /* Dark mode background for the page */
         .dark body {
-            background-color: #111B21;
+            background-color: #111B21; /* Dark mode page background */
         }
-
-        /* Set the chat area background */
         .chat-area-bg {
-            background-color: #ECE5DD;
-            /* You can add a URL to a light mode background pattern here */
+            background-color: #ECE5DD; /* Light mode chat background */
         }
         .dark .chat-area-bg {
-            background-color: #0b141a;
-            /* You can add a URL to a dark mode background pattern here */
+            background-color: #0b141a; /* Dark mode chat background */
         }
 
-        /* Custom scrollbar for chat messages */
-        .chat-messages::-webkit-scrollbar { width: 8px; }
-        .chat-messages::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
-        .chat-messages::-webkit-scrollbar-thumb { background: #888; border-radius: 10px; }
-        .chat-messages::-webkit-scrollbar-thumb:hover { background: #555; }
-        .dark .chat-messages::-webkit-scrollbar-track { background: #202c33; }
-        .dark .chat-messages::-webkit-scrollbar-thumb { background: #374045; }
-        .dark .chat-messages::-webkit-scrollbar-thumb:hover { background: #4b555b; }
+        /* Custom scrollbars for light mode */
+        .chat-messages::-webkit-scrollbar, .chat-list::-webkit-scrollbar { width: 8px; }
+        .chat-messages::-webkit-scrollbar-track, .chat-list::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+        .chat-messages::-webkit-scrollbar-thumb, .chat-list::-webkit-scrollbar-thumb { background: #888; border-radius: 10px; }
+        .chat-messages::-webkit-scrollbar-thumb:hover, .chat-list::-webkit-scrollbar-thumb:hover { background: #555; }
 
-        /* Custom scrollbar for chat list */
-        .chat-list::-webkit-scrollbar { width: 8px; }
-        .chat-list::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
-        .chat-list::-webkit-scrollbar-thumb { background: #888; border-radius: 10px; }
-        .chat-list::-webkit-scrollbar-thumb:hover { background: #555; }
-        .dark .chat-list::-webkit-scrollbar-track { background: #202c33; }
-        .dark .chat-list::-webkit-scrollbar-thumb { background: #374045; }
-        .dark .chat-list::-webkit-scrollbar-thumb:hover { background: #4b555b; }
+        /* Custom scrollbars for dark mode */
+        .dark .chat-messages::-webkit-scrollbar-track, .dark .chat-list::-webkit-scrollbar-track { background: #202c33; }
+        .dark .chat-messages::-webkit-scrollbar-thumb, .dark .chat-list::-webkit-scrollbar-thumb { background: #374045; }
+        .dark .chat-messages::-webkit-scrollbar-thumb:hover, .dark .chat-list::-webkit-scrollbar-thumb:hover { background: #4b555b; }
 
-        /* Loading spinner styles */
+        /* Loading spinner */
         .spinner {
             border: 4px solid rgba(0, 0, 0, 0.1);
             border-left-color: #128C7E;
@@ -56,69 +46,28 @@
             height: 40px;
             animation: spin 1s linear infinite;
         }
-        .dark .spinner {
-            border-left-color: #25D366;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
+        .dark .spinner { border-left-color: #25D366; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
         /* Message bubble animations */
-        @keyframes fade-in {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-fade-in {
-            animation: fade-in 0.3s ease-out;
-        }
+        @keyframes fade-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { animation: fade-in 0.3s ease-out; }
 
         /* Responsive adjustments for smaller screens */
         @media (max-width: 767px) {
-            #app-container {
-                flex-direction: column;
-                max-height: 100vh;
-                border-radius: 0;
-            }
-            #app-container > div:first-child { /* Sidebar */
-                width: 100%;
-                height: 100%;
-                border-right: none;
-                border-bottom: 1px solid #d1d5db;
-            }
-            .dark #app-container > div:first-child {
-                border-bottom: 1px solid #374045;
-            }
-            #app-container > div:last-child { /* Chat Area */
-                width: 100%;
-                height: 100%;
-                border-top-left-radius: 0;
-                border-top-right-radius: 0;
-                display: flex;
-            }
-
-            /* Mobile view: Hide chat area by default, show sidebar */
+            #app-container { flex-direction: column; max-height: 100vh; border-radius: 0; }
+            #app-container > div:first-child { width: 100%; height: 100%; border-right: none; border-bottom: 1px solid #d1d5db; }
+            .dark #app-container > div:first-child { border-bottom: 1px solid #374045; }
+            #app-container > div:last-child { width: 100%; height: 100%; border-top-left-radius: 0; border-top-right-radius: 0; display: flex; }
             #app-container.chat-view-active > div:first-child { display: none; }
             #app-container.chat-view-active > div:last-child { display: flex; }
-
-            /* Mobile view: Hide sidebar when chat is active */
             #app-container:not(.chat-view-active) > div:first-child { display: flex; }
             #app-container:not(.chat-view-active) > div:last-child { display: none; }
-
-            /* Chat header on mobile */
-            #chat-header {
-                display: flex;
-                align-items: center;
-                justify-content: flex-start;
-            }
-            #back-button {
-                display: block;
-                margin-right: 1rem;
-            }
+            #chat-header { display: flex; align-items: center; justify-content: flex-start; }
+            #back-button { display: block; margin-right: 1rem; }
         }
 
-        /* Default desktop view: Sidebar and Chat area side-by-side */
+        /* Default desktop view */
         @media (min-width: 768px) {
             #app-container > div:first-child { display: flex !important; }
             #app-container > div:last-child { display: flex !important; }
@@ -128,8 +77,8 @@
 </head>
 <body class="h-screen flex items-center justify-center">
 
+    <!-- Theme toggling script to prevent flash of unstyled content (FOUC) -->
     <script>
-        // Set 'dark' class on <html> element
         if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
             document.documentElement.classList.add('dark');
         } else {
@@ -137,27 +86,27 @@
         }
     </script>
 
+    <!-- Loading Overlay -->
     <div id="loading-overlay" class="fixed inset-0 bg-white bg-opacity-75 dark:bg-[#111B21] dark:bg-opacity-75 flex items-center justify-center z-50">
         <div class="spinner"></div>
         <p class="ml-4 text-lg text-gray-700 dark:text-gray-300">Loading FalconixTalk...</p>
     </div>
 
-    <div id="auth-container" class="bg-white dark:bg-[#202C33] p-8 rounded-xl shadow-2xl max-w-md w-full text-center">
+    <!-- Login Screen -->
+    <div id="auth-container" class="hidden bg-white dark:bg-[#202C33] p-8 rounded-xl shadow-2xl max-w-md w-full text-center">
         <h2 class="text-3xl font-extrabold mb-8 text-[#128C7E] dark:text-[#25D366]">Welcome to FalconixTalk</h2>
-        
-        <button id="google-sign-in-button"
-                class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-full font-semibold flex items-center justify-center space-x-3 shadow-lg transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-blue-300">
-            <svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12.24 10.285V11.69h4.293c-.083.486-.31.887-.697 1.25-.388.363-.88.62-1.476.777l-1.63 1.26c-1.02.79-2.288 1.25-3.69 1.25-2.822 0-5.207-1.92-5.99-4.502H3.96c.86 2.09 2.536 3.73 4.67 4.67 2.134.94 4.54.94 6.674 0l1.63-1.26c.596-.157 1.088-.414 1.476-.777.387-.363.614-.764.697-1.25V10.285h-4.293zM12 4c1.365 0 2.61.46 3.63 1.23l2.87-2.87C16.29 2.51 14.19 2 12 2 8.78 2 5.86 3.24 3.96 5.33l1.83 1.42C6.46 4.92 8.94 4 12 4z"/>
-            </svg>
+        <button id="google-sign-in-button" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-full font-semibold flex items-center justify-center space-x-3 shadow-lg transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-blue-300">
+            <svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M12.24 10.285V11.69h4.293c-.083.486-.31.887-.697 1.25-.388.363-.88.62-1.476.777l-1.63 1.26c-1.02.79-2.288 1.25-3.69 1.25-2.822 0-5.207-1.92-5.99-4.502H3.96c.86 2.09 2.536 3.73 4.67 4.67 2.134.94 4.54.94 6.674 0l1.63-1.26c.596-.157 1.088-.414 1.476-.777.387-.363.614-.764.697-1.25V10.285h-4.293zM12 4c1.365 0 2.61.46 3.63 1.23l2.87-2.87C16.29 2.51 14.19 2 12 2 8.78 2 5.86 3.24 3.96 5.33l1.83 1.42C6.46 4.92 8.94 4 12 4z"/></svg>
             <span>Sign in with Google</span>
         </button>
-
         <p id="auth-message" class="mt-6 text-red-600 dark:text-red-400 font-medium"></p>
     </div>
 
-    <div id="app-container" class="hidden flex w-full h-full max-w-7xl max-h-[95vh] bg-white dark:bg-[#202C33] shadow-2xl rounded-xl overflow-hidden md:flex">
+    <!-- Main App Container -->
+    <div id="app-container" class="hidden flex w-full h-full max-w-7xl max-h-[95vh] bg-white dark:bg-[#202C33] shadow-2xl rounded-xl overflow-hidden">
+        <!-- Sidebar -->
         <div class="w-full md:w-1/3 bg-[#F0F2F5] dark:bg-[#111B21] border-r border-gray-200 dark:border-gray-700 flex flex-col">
+            <!-- Sidebar Header -->
             <div class="p-4 bg-[#128C7E] dark:bg-[#202C33] text-white flex items-center justify-between shadow-md rounded-tl-xl">
                 <h1 class="text-2xl font-bold">FalconixTalk</h1>
                 <div class="flex items-center space-x-3">
@@ -175,26 +124,20 @@
                     <button id="logout-button" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md text-sm font-semibold shadow-sm transition duration-200 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-300">Logout</button>
                 </div>
             </div>
+            <!-- Search Bar -->
             <div class="p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-[#202C33] shadow-sm">
-                <input type="text" id="user-search-input" placeholder="Search by name or email" class="w-full p-2.5 rounded-lg bg-gray-100 dark:bg-[#2A3942] border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#25D366] dark:focus:ring-[#25D366] transition duration-200">
+                <input type="text" id="user-search-input" placeholder="Search by name or email" class="w-full p-2.5 rounded-lg bg-gray-100 dark:bg-[#2A3942] border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#25D366] transition duration-200">
             </div>
-            <div id="user-list" class="flex-grow overflow-y-auto chat-list">
-                <div class="chat-list-item p-4 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-transparent cursor-pointer hover:bg-gray-100 dark:hover:bg-[#2A3942] transition duration-150 ease-in-out flex items-center space-x-3" data-user-id="public-chat">
-                    <img src="https://placehold.co/40x40/4CAF50/ffffff?text=GC" alt="Public Chat Icon" class="w-10 h-10 rounded-full object-cover">
-                    <div>
-                        <div class="font-semibold text-gray-800 dark:text-gray-200">Public Chat</div>
-                        <div class="text-sm text-gray-600 dark:text-gray-400">Chat with everyone!</div>
-                    </div>
-                </div>
-                </div>
+            <!-- User List -->
+            <div id="user-list" class="flex-grow overflow-y-auto chat-list"></div>
         </div>
 
+        <!-- Chat Area -->
         <div class="flex-grow flex flex-col w-full md:w-2/3 chat-area-bg">
+            <!-- Chat Header -->
             <div id="chat-header" class="p-4 bg-[#128C7E] dark:bg-[#202C33] text-white flex items-center border-b border-gray-300 dark:border-gray-700 shadow-md rounded-tr-xl">
                 <button id="back-button" class="md:hidden text-white mr-4 p-2 rounded-full hover:bg-[#075E54] dark:hover:bg-[#2A3942] transition duration-200 focus:outline-none focus:ring-2 focus:ring-[#25D366]">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                    </svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
                 </button>
                 <div class="flex items-center">
                     <img id="chat-partner-pic" src="https://placehold.co/40x40/cccccc/ffffff?text=U" alt="Partner Profile" class="w-10 h-10 rounded-full object-cover mr-3">
@@ -204,87 +147,69 @@
                     </div>
                 </div>
             </div>
-
-            <div id="messages-container" class="flex-grow p-4 overflow-y-auto chat-messages flex flex-col-reverse space-y-2">
-                </div>
-
+            <!-- Messages -->
+            <div id="messages-container" class="flex-grow p-4 overflow-y-auto chat-messages flex flex-col-reverse space-y-2"></div>
+            <!-- Message Input -->
             <div class="p-4 bg-gray-100 dark:bg-[#202C33] border-t border-gray-300 dark:border-gray-700 flex items-center space-x-2 shadow-inner rounded-br-xl">
                 <input type="text" id="message-input" placeholder="Type a message..." class="flex-grow p-3 rounded-full bg-white dark:bg-[#2A3942] border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-[#25D366] transition duration-200" disabled>
                 <button id="send-button" class="bg-[#25D366] hover:bg-[#128C7E] dark:hover:bg-green-600 text-white p-3 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-[#25D366]" disabled>
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                    </svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
                 </button>
             </div>
         </div>
     </div>
-    
-    <script>
-        // --- THEME TOGGLE LOGIC ---
-        const themeToggleButton = document.getElementById('theme-toggle-button');
-        const darkIcon = document.getElementById('theme-toggle-dark-icon');
-        const lightIcon = document.getElementById('theme-toggle-light-icon');
 
-        // Function to set the theme and update the icon
-        const applyTheme = (isDark) => {
-            if (isDark) {
-                document.documentElement.classList.add('dark');
-                darkIcon.classList.add('hidden');
-                lightIcon.classList.remove('hidden');
-            } else {
-                document.documentElement.classList.remove('dark');
-                darkIcon.classList.remove('hidden');
-                lightIcon.classList.add('hidden');
-            }
-        };
-        
-        // Apply the stored theme on load
-        applyTheme(localStorage.getItem('theme') === 'dark');
-
-        // Event listener for the toggle button
-        themeToggleButton.addEventListener('click', () => {
-            const isDark = document.documentElement.classList.toggle('dark');
-            localStorage.setItem('theme', isDark ? 'dark' : 'light');
-            applyTheme(isDark);
-        });
-    </script>
-    
+    <!-- Main Application Logic -->
     <script type="module">
-        // Import only the necessary core Firebase modules
+        // Import Firebase services
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
         import { getAuth, onAuthStateChanged, signOut, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
-        import { getFirestore, collection, addDoc, query, where, onSnapshot, serverTimestamp, setDoc, doc, getDoc, getDocs, orderBy, updateDoc } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, query, onSnapshot, serverTimestamp, setDoc, doc, getDoc, updateDoc, orderBy } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
         import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-storage.js";
 
-        // !!! IMPORTANT !!!
-        // Replace the placeholder values below with your actual Firebase configuration.
-        // Do not share your actual keys publicly.
+        // --- IMPORTANT ---
+        // 1. Replace the placeholder values below with your actual Firebase configuration.
+        // 2. The app WILL NOT WORK if you do not provide your own valid keys.
         const firebaseConfig = {
             apiKey: "YOUR_API_KEY",
             authDomain: "YOUR_AUTH_DOMAIN",
             projectId: "YOUR_PROJECT_ID",
             storageBucket: "YOUR_STORAGE_BUCKET",
             messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-            appId: "YOUR_APP_ID",
-            measurementId: "YOUR_MEASUREMENT_ID"
+            appId: "YOUR_APP_ID"
         };
+        
+        // --- IMPORTANT ---
+        // 3. Set your Firestore Security Rules in the Firebase console.
+        //    Go to Firestore -> Rules and paste the following, then publish:
+        /*
+        rules_version = '2';
+        service cloud.firestore {
+          match /databases/{database}/documents {
+            // Users can read the public user list if they are logged in
+            match /artifacts/{appId}/users/{userId} {
+              allow read: if request.auth != null;
+              allow write: if request.auth.uid == userId;
+            }
+            // Public chat messages can be read/written by any authenticated user
+            match /artifacts/{appId}/public/data/messages/{messageId} {
+                allow read, write: if request.auth != null;
+            }
+            // Private chat messages can only be read/written by the participants
+            match /chats/{chatId}/{document=**} {
+              allow read, write: if request.auth.uid in chatId.split('_');
+            }
+          }
+        }
+        */
 
+        // Global variables
         const appId = firebaseConfig.projectId;
-
-        let app;
-        let db;
-        let auth;
-        let storage;
-        let userId = null;
-        let userName = null;
-        let userEmail = null;
-        let userProfilePicUrl = null;
-        let isAuthReady = false;
-        let selectedChatPartnerId = 'public-chat';
-        let selectedChatPartnerDisplayName = 'Public Chat';
-        let selectedChatPartnerProfilePic = "https://placehold.co/40x40/4CAF50/ffffff?text=GC"; // Default for public chat
+        let app, db, auth, storage;
+        let userId, userName, userEmail, userProfilePicUrl;
+        let selectedChatPartnerId = null;
         let unsubscribeMessages = null;
-        let unsubscribePartnerStatus = null; // New: to unsubscribe from partner status listener
+        let unsubscribePartnerStatus = null;
         let allUsers = [];
 
         // DOM Elements
@@ -306,165 +231,327 @@
         const profilePictureUpload = document.getElementById('profile-picture-upload');
         const currentUserDisplayName = document.getElementById('current-user-display-name');
         const backButton = document.getElementById('back-button');
-        const publicChatListItem = userList.querySelector('[data-user-id="public-chat"]');
-
+        const themeToggleButton = document.getElementById('theme-toggle-button');
+        const darkIcon = document.getElementById('theme-toggle-dark-icon');
+        const lightIcon = document.getElementById('theme-toggle-light-icon');
+        
         const DEFAULT_PROFILE_PIC = "https://placehold.co/40x40/cccccc/ffffff?text=U";
-        const DEFAULT_CHAT_PIC = "https://placehold.co/32x32/cccccc/ffffff?text=U";
 
-        // Function to show a custom message box (now dark mode aware)
-        function showMessageBox(message, type = 'info') {
-            const messageBox = document.createElement('div');
-            messageBox.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]';
-            const bgColor = type === 'error' ? 'bg-red-500' : 'bg-[#25D366]';
-            messageBox.innerHTML = `
-                <div class="bg-white dark:bg-[#2A3942] p-6 rounded-lg shadow-xl max-w-sm text-center">
-                    <p class="text-lg font-semibold mb-4 ${type === 'error' ? 'text-red-700 dark:text-red-400' : 'text-gray-800 dark:text-gray-200'}">${message}</p>
-                    <button id="message-box-ok" class="${bgColor} hover:opacity-80 text-white px-4 py-2 rounded-md">OK</button>
-                </div>
-            `;
-            document.body.appendChild(messageBox);
+        // --- Theme Management ---
+        const applyTheme = (isDark) => {
+            darkIcon.classList.toggle('hidden', isDark);
+            lightIcon.classList.toggle('hidden', !isDark);
+        };
+        applyTheme(document.documentElement.classList.contains('dark'));
+        themeToggleButton.addEventListener('click', () => {
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            applyTheme(isDark);
+        });
 
-            document.getElementById('message-box-ok').onclick = () => {
-                document.body.removeChild(messageBox);
-            };
+        // --- Main Initialization ---
+        async function main() {
+            try {
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                storage = getStorage(app);
+                setupAuthListener();
+            } catch (error) {
+                console.error("Firebase Init Error:", error);
+                showMessageBox(`Critical Error: Firebase failed to initialize. Check your config. ${error.message}`, 'error');
+                loadingOverlay.classList.add('hidden');
+                authContainer.classList.remove('hidden');
+            }
         }
 
-        // Function to format timestamp for "last seen"
+        // --- Authentication ---
+        function setupAuthListener() {
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    // User is signed in
+                    await handleUserLogin(user);
+                    appContainer.classList.remove('hidden');
+                    authContainer.classList.add('hidden');
+                } else {
+                    // User is signed out
+                    handleUserLogout();
+                    appContainer.classList.add('hidden');
+                    authContainer.classList.remove('hidden');
+                }
+                loadingOverlay.classList.add('hidden');
+            });
+        }
+
+        async function handleUserLogin(user) {
+            userId = user.uid;
+            userName = user.displayName;
+            userEmail = user.email;
+
+            const userDocRef = doc(db, `artifacts/${appId}/users/${userId}`);
+            const userDocSnap = await getDoc(userDocRef);
+            
+            if (!userDocSnap.exists()) {
+                // New user
+                userProfilePicUrl = user.photoURL || DEFAULT_PROFILE_PIC;
+                await setDoc(userDocRef, {
+                    uid: userId,
+                    displayName: userName,
+                    email: userEmail,
+                    profilePictureUrl: userProfilePicUrl,
+                    online: true,
+                    lastSeen: serverTimestamp()
+                });
+            } else {
+                // Existing user
+                const userData = userDocSnap.data();
+                userProfilePicUrl = userData.profilePictureUrl || DEFAULT_PROFILE_PIC;
+                await updateDoc(userDocRef, { online: true, lastSeen: serverTimestamp() });
+            }
+            
+            updateUIForUser();
+            await loadAndDisplayUsers();
+            selectChat('public-chat', 'Public Chat', "https://placehold.co/40x40/4CAF50/ffffff?text=GC");
+        }
+
+        function handleUserLogout() {
+            if (userId) {
+                const userDocRef = doc(db, `artifacts/${appId}/users/${userId}`);
+                updateDoc(userDocRef, { online: false, lastSeen: serverTimestamp() });
+            }
+            userId = null;
+            if (unsubscribeMessages) unsubscribeMessages();
+            if (unsubscribePartnerStatus) unsubscribePartnerStatus();
+            updateUIForGuest();
+        }
+
+        googleSignInButton.addEventListener('click', () => {
+            signInWithPopup(auth, new GoogleAuthProvider()).catch(error => {
+                console.error("Google Sign-In Error:", error);
+                showMessageBox(`Sign-in failed: ${error.message}`, 'error');
+            });
+        });
+
+        logoutButton.addEventListener('click', () => signOut(auth));
+
+        // --- UI Updates ---
+        function updateUIForUser() {
+            currentUserDisplayName.textContent = userName || userEmail;
+            userProfilePic.src = userProfilePicUrl;
+        }
+
+        function updateUIForGuest() {
+            currentUserDisplayName.textContent = '';
+            userProfilePic.src = DEFAULT_PROFILE_PIC;
+            userList.innerHTML = '';
+            messagesContainer.innerHTML = '';
+            chatHeaderName.textContent = 'Select a Chat';
+            chatPartnerStatus.textContent = '';
+            chatPartnerPic.src = DEFAULT_PROFILE_PIC;
+            messageInput.disabled = true;
+            sendButton.disabled = true;
+        }
+
+        // --- User & Chat Management ---
+        async function loadAndDisplayUsers() {
+            const usersRef = collection(db, `artifacts/${appId}/users`);
+            onSnapshot(query(usersRef), (snapshot) => {
+                allUsers = snapshot.docs.map(doc => doc.data()).filter(u => u.uid !== userId);
+                allUsers.sort((a, b) => (b.online - a.online) || a.displayName.localeCompare(b.displayName));
+                displayUsers(allUsers);
+            });
+        }
+
+        function displayUsers(usersToDisplay) {
+            userList.innerHTML = ''; // Clear list
+            // Add Public Chat
+            userList.appendChild(createChatListItem({
+                uid: 'public-chat',
+                displayName: 'Public Chat',
+                profilePictureUrl: "https://placehold.co/40x40/4CAF50/ffffff?text=GC",
+                statusText: 'Chat with everyone!'
+            }));
+            // Add other users
+            usersToDisplay.forEach(userData => {
+                const statusText = userData.online 
+                    ? `<span class="text-[#25D366] font-medium">Online</span>` 
+                    : `<span class="text-gray-500 dark:text-gray-400">${formatLastSeen(userData.lastSeen)}</span>`;
+                userList.appendChild(createChatListItem({ ...userData, statusText }));
+            });
+        }
+
+        function createChatListItem(userData) {
+            const item = document.createElement('div');
+            item.className = 'chat-list-item p-4 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-transparent cursor-pointer hover:bg-gray-100 dark:hover:bg-[#2A3942] transition duration-150 ease-in-out flex items-center space-x-3';
+            if (selectedChatPartnerId === userData.uid) {
+                item.classList.add('bg-[#E0F2F1]', 'dark:bg-[#2A3942]', 'font-bold');
+            }
+            item.innerHTML = `
+                <img src="${userData.profilePictureUrl || DEFAULT_PROFILE_PIC}" alt="Profile" class="w-10 h-10 rounded-full object-cover">
+                <div>
+                    <div class="font-semibold text-gray-800 dark:text-gray-200">${userData.displayName}</div>
+                    <div class="text-sm">${userData.statusText}</div>
+                </div>`;
+            item.addEventListener('click', () => selectChat(userData.uid, userData.displayName, userData.profilePictureUrl));
+            return item;
+        }
+
+        userSearchInput.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            const filtered = allUsers.filter(user => 
+                user.displayName.toLowerCase().includes(searchTerm) || 
+                user.email.toLowerCase().includes(searchTerm)
+            );
+            displayUsers(filtered);
+        });
+
+        function selectChat(partnerId, partnerName, partnerPic) {
+            if (selectedChatPartnerId === partnerId) return;
+
+            selectedChatPartnerId = partnerId;
+            
+            // Unsubscribe from previous listeners
+            if (unsubscribeMessages) unsubscribeMessages();
+            if (unsubscribePartnerStatus) unsubscribePartnerStatus();
+
+            // Update chat header
+            chatHeaderName.textContent = partnerName;
+            chatPartnerPic.src = partnerPic || DEFAULT_PROFILE_PIC;
+            
+            // Update UI
+            messagesContainer.innerHTML = '';
+            messageInput.disabled = false;
+            sendButton.disabled = false;
+            displayUsers(allUsers); // Re-render list to show selection
+            
+            if (partnerId === 'public-chat') {
+                chatPartnerStatus.textContent = 'Everyone is here';
+            } else {
+                const partnerDocRef = doc(db, `artifacts/${appId}/users/${partnerId}`);
+                unsubscribePartnerStatus = onSnapshot(partnerDocRef, (docSnap) => {
+                    if (docSnap.exists()) {
+                        const data = docSnap.data();
+                        chatPartnerStatus.textContent = data.online ? 'Online' : formatLastSeen(data.lastSeen);
+                    }
+                });
+            }
+            
+            setupRealtimeMessages();
+
+            if (window.innerWidth < 768) {
+                appContainer.classList.add('chat-view-active');
+            }
+        }
+
+        // --- Messaging ---
+        function getPrivateChatId(uid1, uid2) {
+            return uid1 < uid2 ? `${uid1}_${uid2}` : `${uid2}_${uid1}`;
+        }
+
+        function setupRealtimeMessages() {
+            let messagesRef;
+            if (selectedChatPartnerId === 'public-chat') {
+                messagesRef = collection(db, `artifacts/${appId}/public/data/messages`);
+            } else {
+                const chatId = getPrivateChatId(userId, selectedChatPartnerId);
+                messagesRef = collection(db, `chats/${chatId}/messages`);
+            }
+            
+            const q = query(messagesRef, orderBy('timestamp', 'desc'));
+            unsubscribeMessages = onSnapshot(q, (snapshot) => {
+                messagesContainer.innerHTML = ''; // Clear before adding
+                snapshot.docs.forEach(doc => displayMessage(doc.data()));
+            });
+        }
+
+        async function sendMessage() {
+            const text = messageInput.value.trim();
+            if (text === '' || !userId) return;
+
+            const messageData = {
+                senderId: userId,
+                senderDisplayName: userName,
+                text: text,
+                timestamp: serverTimestamp()
+            };
+
+            let messagesRef;
+            if (selectedChatPartnerId === 'public-chat') {
+                messagesRef = collection(db, `artifacts/${appId}/public/data/messages`);
+            } else {
+                const chatId = getPrivateChatId(userId, selectedChatPartnerId);
+                messagesRef = collection(db, `chats/${chatId}/messages`);
+            }
+            
+            try {
+                await addDoc(messagesRef, messageData);
+                messageInput.value = '';
+            } catch (error) {
+                console.error("Send Message Error:", error);
+                showMessageBox(`Could not send message: ${error.message}`, 'error');
+            }
+        }
+
+        sendButton.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        function displayMessage(data) {
+            const isSender = data.senderId === userId;
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `flex items-end p-2.5 my-1 rounded-xl shadow-sm max-w-[80%] md:max-w-[70%] animate-fade-in
+                ${isSender ? 'bg-[#DCF8C6] dark:bg-[#005C4B] self-end rounded-br-none' : 'bg-white dark:bg-[#202C33] self-start rounded-bl-none'}
+                ${isSender ? 'flex-row-reverse' : ''}`;
+            
+            const senderUser = isSender ? { displayName: 'You' } : allUsers.find(u => u.uid === data.senderId) || { displayName: 'Unknown User' };
+
+            msgDiv.innerHTML = `
+                <div class="flex flex-col ${isSender ? 'items-end' : 'items-start'}">
+                    <div class="font-semibold text-xs mb-0.5 text-gray-800 dark:text-gray-200">${senderUser.displayName}</div>
+                    <p class="break-words text-sm text-gray-800 dark:text-gray-200">${data.text}</p>
+                    <div class="text-right text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                        ${data.timestamp ? new Date(data.timestamp.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Sending...'}
+                    </div>
+                </div>`;
+            messagesContainer.appendChild(msgDiv); // Append for correct order with flex-col-reverse
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        // --- Utility Functions ---
         function formatLastSeen(timestamp) {
             if (!timestamp) return 'Offline';
             const date = timestamp.toDate();
-            const now = new Date();
-            const diff = now.getTime() - date.getTime();
-
-            const minutes = Math.floor(diff / (1000 * 60));
-            const hours = Math.floor(diff / (1000 * 60 * 60));
-            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-
+            const diff = new Date() - date;
+            const minutes = Math.floor(diff / 60000);
             if (minutes < 1) return 'Online';
             if (minutes < 60) return `last seen ${minutes}m ago`;
+            const hours = Math.floor(minutes / 60);
             if (hours < 24) return `last seen ${hours}h ago`;
-            if (days < 7) return `last seen ${days}d ago`;
-
-            return `last seen on ${date.toLocaleDateString()} at ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+            return `last seen on ${date.toLocaleDateString()}`;
         }
 
-        // Initialize Firebase and set up authentication
-        async function initializeFirebase() {
-            // --- The rest of your JavaScript logic goes here, with the following modifications --- //
-            // --- Only functions that generate HTML are shown below for brevity --- //
-            // --- Copy the rest of your original JS into this space --- //
-            // NOTE: The original JS logic from your file is largely correct and has been omitted here
-            // to focus on the dark mode changes. You should insert your original JS from line 380 onwards,
-            // but replace the functions below with these new dark-mode-aware versions.
+        function showMessageBox(message, type = 'info') {
+            const box = document.createElement('div');
+            box.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]';
+            const bgColor = type === 'error' ? 'bg-red-500' : 'bg-[#25D366]';
+            box.innerHTML = `
+                <div class="bg-white dark:bg-[#2A3942] p-6 rounded-lg shadow-xl max-w-sm text-center">
+                    <p class="text-lg font-semibold mb-4 ${type === 'error' ? 'text-red-700 dark:text-red-400' : 'text-gray-800 dark:text-gray-200'}">${message}</p>
+                    <button id="msg-box-ok" class="${bgColor} hover:opacity-80 text-white px-4 py-2 rounded-md">OK</button>
+                </div>`;
+            document.body.appendChild(box);
+            box.querySelector('#msg-box-ok').onclick = () => document.body.removeChild(box);
         }
         
-        // --- REPLACEMENT FUNCTIONS FOR DARK MODE ---
-        // Replace these functions in your original JavaScript logic.
-        
-        // Function to display a message in the chat (DARK MODE AWARE)
-        function displayMessage(messageData) {
-            const messageElement = document.createElement('div');
-            const isSender = messageData.senderId === userId;
-            
-            // WhatsApp-like bubble colors with dark mode support
-            const messageClass = isSender 
-                ? 'bg-[#DCF8C6] dark:bg-[#005C4B] self-end rounded-br-none' 
-                : 'bg-white dark:bg-[#202C33] self-start rounded-bl-none';
-            
-            const textColor = 'text-gray-800 dark:text-gray-200';
-            
-            let senderDisplayName;
-            let senderProfilePic = DEFAULT_CHAT_PIC;
+        // Back button for mobile
+        backButton.addEventListener('click', () => {
+            appContainer.classList.remove('chat-view-active');
+            selectChat('public-chat', 'Public Chat', "https://placehold.co/40x40/4CAF50/ffffff?text=GC");
+        });
 
-            if (isSender) {
-                senderDisplayName = 'You';
-                senderProfilePic = userProfilePicUrl || DEFAULT_CHAT_PIC;
-            } else {
-                const senderUser = allUsers.find(user => user.uid === messageData.senderId);
-                senderDisplayName = messageData.senderDisplayName || (senderUser && senderUser.displayName) || `User: ${messageData.senderId.substring(0, 8)}...`;
-                senderProfilePic = (senderUser && senderUser.profilePictureUrl) ? senderUser.profilePictureUrl : DEFAULT_CHAT_PIC;
-            }
-
-            const timestamp = messageData.timestamp ? new Date(messageData.timestamp.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Sending...';
-
-            messageElement.className = `flex items-end p-2.5 my-1 rounded-xl shadow-sm ${messageClass} ${textColor} ${isSender ? 'flex-row-reverse' : ''} max-w-[80%] md:max-w-[70%] animate-fade-in`;
-            messageElement.innerHTML = `
-                <img src="${senderProfilePic}" alt="Profile" class="w-8 h-8 rounded-full object-cover ${isSender ? 'ml-2' : 'mr-2'} flex-shrink-0">
-                <div class="flex flex-col ${isSender ? 'items-end' : 'items-start'}">
-                    <div class="font-semibold text-xs mb-0.5 ${isSender ? 'text-right' : 'text-left'}">${senderDisplayName}</div>
-                    <p class="break-words text-sm">${messageData.text}</p>
-                    <div class="text-right text-xs text-gray-500 dark:text-gray-400 mt-0.5">${timestamp}</div>
-                </div>
-            `;
-            messagesContainer.prepend(messageElement);
-        }
-        
-        // Display users in the sidebar (DARK MODE AWARE)
-        function displayUsers(usersToDisplay) {
-            const publicChatElement = userList.querySelector('[data-user-id="public-chat"]');
-            const userElementsToRemove = userList.querySelectorAll('.chat-list-item:not([data-user-id="public-chat"])');
-            userElementsToRemove.forEach(el => el.remove());
-
-            if (selectedChatPartnerId === 'public-chat') {
-                publicChatElement.classList.add('bg-[#E0F2F1]', 'dark:bg-[#2A3942]', 'font-bold');
-            } else {
-                publicChatElement.classList.remove('bg-[#E0F2F1]', 'dark:bg-[#2A3942]', 'font-bold');
-            }
-            
-            if (usersToDisplay.length === 0 && userSearchInput.value.trim() !== '') {
-                const inviteIdentifier = userSearchInput.value.trim();
-                const inviteElement = document.createElement('div');
-                inviteElement.className = 'p-4 border-b border-gray-200 dark:border-gray-700 bg-yellow-100 dark:bg-yellow-900/50 cursor-pointer hover:bg-yellow-200 dark:hover:bg-yellow-800/50 transition duration-150 ease-in-out flex items-center justify-between rounded-md';
-                inviteElement.innerHTML = `
-                    <div>
-                        <div class="font-semibold text-gray-800 dark:text-yellow-200">No user found for "${inviteIdentifier}"</div>
-                        <div class="text-sm text-gray-600 dark:text-yellow-300">Invite them to FalconixTalk!</div>
-                    </div>
-                    <button class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-md text-sm font-semibold shadow-sm transition duration-200 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-300" data-invite-identifier="${inviteIdentifier}">Invite via SMS</button>
-                `;
-                userList.appendChild(inviteElement);
-                inviteElement.querySelector('button').addEventListener('click', (e) => {
-                    const identifierToInvite = e.target.getAttribute('data-invite-identifier');
-                    inviteUser(identifierToInvite);
-                });
-            } else {
-                usersToDisplay.forEach((userData) => {
-                    const userElement = document.createElement('div');
-                    userElement.className = 'chat-list-item p-4 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-transparent cursor-pointer hover:bg-gray-100 dark:hover:bg-[#2A3942] transition duration-150 ease-in-out flex items-center space-x-3 rounded-md';
-                    userElement.setAttribute('data-user-id', userData.uid);
-
-                    let displayNameForList = userData.displayName || userData.email || `User: ${userData.uid.substring(0, 8)}...`;
-                    let profilePicForList = userData.profilePictureUrl || DEFAULT_PROFILE_PIC;
-                    let statusText = userData.online ? '<span class="text-[#25D366] font-medium">Online</span>' : `<span class="text-gray-500 dark:text-gray-400">${formatLastSeen(userData.lastSeen)}</span>`;
-
-                    userElement.innerHTML = `
-                        <img src="${profilePicForList}" alt="Profile" class="w-10 h-10 rounded-full object-cover">
-                        <div>
-                            <div class="font-semibold text-gray-800 dark:text-gray-200">${displayNameForList}</div>
-                            <div class="text-sm">${statusText}</div>
-                        </div>
-                    `;
-                    userElement.addEventListener('click', () => {
-                        selectChat(userData.uid, displayNameForList, userData.displayName, userData.email, profilePicForList, userData.online, userData.lastSeen);
-                    });
-
-                    if (selectedChatPartnerId === userData.uid) {
-                        userElement.classList.add('bg-[#E0F2F1]', 'dark:bg-[#2A3942]', 'font-bold');
-                    }
-                    userList.appendChild(userElement);
-                });
-            }
-        }
-        
-        // --- PASTE YOUR ORIGINAL JAVASCRIPT LOGIC HERE ---
-        // (From the "initializeFirebase" function onwards, but remember to replace the two functions above)
-        // ...
-        // ... [Your original JavaScript]
-        // ...
-        
-        // Initialize Firebase on window load
-        // window.onload = initializeFirebase; // This line should be at the end of your script
-
+        // Start the application
+        main();
     </script>
 </body>
 </html>

@@ -166,12 +166,7 @@
             </div>
             <!-- Search Bar -->
             <div class="p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-[#202C33] shadow-sm">
-                <div class="relative flex items-center">
-                    <input type="text" id="user-search-input" placeholder="Search by name or email" class="w-full p-2.5 pr-10 rounded-lg bg-gray-100 dark:bg-[#2A3942] border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#25D366] transition duration-200">
-                    <button id="search-button" class="absolute right-0 top-0 h-full px-3 text-gray-500 hover:text-green-500 dark:hover:text-green-400">
-                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"></path></svg>
-                    </button>
-                </div>
+                <input type="text" id="user-search-input" placeholder="Search users by name or email" class="w-full p-2.5 rounded-lg bg-gray-100 dark:bg-[#2A3942] border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#25D366] transition duration-200">
             </div>
             <!-- User/Chat List -->
             <div id="user-list" class="flex-grow overflow-y-auto chat-list"></div>
@@ -227,7 +222,7 @@
         // You MUST update your rules in the Firebase Console for messaging to work.
         // Go to Firestore -> Rules, delete everything, and paste this:
         /*
-
+        
         */
 
         // Global variables
@@ -238,7 +233,7 @@
         let unsubscribeMessages = null;
         let unsubscribePartnerStatus = null;
         let allUsersCache = []; // Cache for all users to enable searching
-        let chatListListener = null; // To manage the chat list subscription
+        let allUsersListener = null; // Listener for the main user list
         let unreadCountsListener = null; // Listener for unread counts
         let unreadCounts = {}; // Local cache for unread counts
 
@@ -257,7 +252,6 @@
         const chatPartnerPic = document.getElementById('chat-partner-pic');
         const logoutButton = document.getElementById('logout-button');
         const userSearchInput = document.getElementById('user-search-input');
-        const searchButton = document.getElementById('search-button');
         const userProfilePic = document.getElementById('user-profile-pic');
         const profilePictureUpload = document.getElementById('profile-picture-upload');
         const currentUserDisplayName = document.getElementById('current-user-display-name');
@@ -330,9 +324,8 @@
             }
             
             updateUIForUser();
-            await fetchAllUsersForSearch();
+            listenToAllUsers();
             listenToUnreadCounts();
-            listenToChatList();
             selectChat('public-chat', 'Public Chat', "https://placehold.co/40x40/4CAF50/ffffff?text=GC", false);
         }
 
@@ -344,7 +337,7 @@
             userId = null;
             if (unsubscribeMessages) unsubscribeMessages();
             if (unsubscribePartnerStatus) unsubscribePartnerStatus();
-            if (chatListListener) chatListListener();
+            if (allUsersListener) allUsersListener();
             if (unreadCountsListener) unreadCountsListener();
             updateUIForGuest();
         }
@@ -377,16 +370,13 @@
         }
 
         // --- User & Chat Management ---
-        async function fetchAllUsersForSearch() {
-            try {
-                const usersRef = collection(db, `artifacts/${appId}/users`);
-                const snapshot = await getDocs(query(usersRef));
+        function listenToAllUsers() {
+            if (allUsersListener) allUsersListener();
+            const usersRef = collection(db, `artifacts/${appId}/users`);
+            allUsersListener = onSnapshot(query(usersRef), (snapshot) => {
                 allUsersCache = snapshot.docs.map(doc => doc.data()).filter(u => u.uid !== userId);
-                console.log(`Successfully fetched and cached ${allUsersCache.length} users for searching.`);
-            } catch (error) {
-                console.error("Error fetching users for search cache:", error);
-                showMessageBox("Could not load user list for searching. Please check your connection or app permissions.", "error");
-            }
+                renderVisibleUserList();
+            });
         }
         
         function listenToUnreadCounts() {
@@ -397,81 +387,48 @@
                 snapshot.forEach(doc => {
                     unreadCounts[doc.id] = doc.data().count;
                 });
-                if (userSearchInput.value.trim() === '') {
-                    listenToChatList();
-                }
+                renderVisibleUserList();
             });
         }
 
-        function listenToChatList() {
-            if (chatListListener) chatListListener();
-
-            const chatListRef = collection(db, `artifacts/${appId}/users/${userId}/chats`);
-            const q = query(chatListRef, orderBy('lastMessageTimestamp', 'desc'));
-
-            chatListListener = onSnapshot(q, (snapshot) => {
-                const chatPartners = snapshot.docs.map(doc => doc.data());
-                if (userSearchInput.value.trim() === '') {
-                    displayChatList(chatPartners);
-                }
-            });
-        }
-
-        function displayChatList(partners) {
-            userList.innerHTML = '';
-            userList.appendChild(createChatListItem({ uid: 'public-chat', displayName: 'Public Chat', profilePictureUrl: "https://placehold.co/40x40/4CAF50/ffffff?text=GC", statusText: 'Chat with everyone!' }));
-            if (partners.length === 0) {
-                 const placeholder = document.createElement('div');
-                 placeholder.className = "p-4 text-center text-sm text-gray-500 dark:text-gray-400";
-                 placeholder.textContent = "Search for users to start a new chat.";
-                 userList.appendChild(placeholder);
-            } else {
-                partners.forEach(partner => {
-                    const fullPartnerData = allUsersCache.find(u => u.uid === partner.uid) || {};
-                    const statusText = fullPartnerData.online ? `<span class="text-[#25D366] font-medium">Online</span>` : `<span class="text-gray-500 dark:text-gray-400">${formatLastSeen(fullPartnerData.lastSeen)}</span>`;
-                    const count = unreadCounts[partner.uid] || 0;
-                    userList.appendChild(createChatListItem({ ...partner, statusText, unreadCount: count }));
-                });
-            }
-        }
-        
-        function displaySearchResults(results) {
-            userList.innerHTML = '';
-            userList.appendChild(createChatListItem({ uid: 'public-chat', displayName: 'Public Chat', profilePictureUrl: "https://placehold.co/40x40/4CAF50/ffffff?text=GC", statusText: 'Chat with everyone!' }));
-            if (results.length === 0) {
-                 const placeholder = document.createElement('div');
-                 placeholder.className = "p-4 text-center text-sm text-gray-500 dark:text-gray-400";
-                 placeholder.textContent = "No users found.";
-                 userList.appendChild(placeholder);
-            } else {
-                results.forEach(user => {
-                    const statusText = user.online ? `<span class="text-[#25D366] font-medium">Online</span>` : `<span class="text-gray-500 dark:text-gray-400">${formatLastSeen(user.lastSeen)}</span>`;
-                    userList.appendChild(createChatListItem({ ...user, statusText }));
-                });
-            }
-        }
-
-        async function performSearch() {
-            if (allUsersCache.length === 0) {
-                console.log("User cache is empty. Attempting to re-fetch before searching...");
-                await fetchAllUsersForSearch();
-            }
+        function renderVisibleUserList() {
             const searchTerm = userSearchInput.value.trim().toLowerCase();
-            if (searchTerm === '') {
-                listenToChatList();
+            let usersToDisplay;
+
+            if (searchTerm) {
+                usersToDisplay = allUsersCache.filter(user => 
+                    user.displayName.toLowerCase().includes(searchTerm) || 
+                    user.email.toLowerCase().includes(searchTerm)
+                );
             } else {
-                if (chatListListener) chatListListener();
-                const filtered = allUsersCache.filter(user => user.displayName.toLowerCase().includes(searchTerm) || user.email.toLowerCase().includes(searchTerm));
-                displaySearchResults(filtered);
+                usersToDisplay = [...allUsersCache];
+            }
+
+            usersToDisplay.sort((a, b) => (b.online - a.online) || a.displayName.localeCompare(b.displayName));
+            
+            userList.innerHTML = '';
+            userList.appendChild(createChatListItem({ uid: 'public-chat', displayName: 'Public Chat', profilePictureUrl: "https://placehold.co/40x40/4CAF50/ffffff?text=GC", statusText: 'Chat with everyone!' }));
+            
+            if (usersToDisplay.length === 0 && !searchTerm) {
+                 const placeholder = document.createElement('div');
+                 placeholder.className = "p-4 text-center text-sm text-gray-500 dark:text-gray-400";
+                 placeholder.textContent = "No other users have joined yet.";
+                 userList.appendChild(placeholder);
+            } else if (usersToDisplay.length === 0 && searchTerm) {
+                 const placeholder = document.createElement('div');
+                 placeholder.className = "p-4 text-center text-sm text-gray-500 dark:text-gray-400";
+                 placeholder.textContent = "No users found for your search.";
+                 userList.appendChild(placeholder);
+            } else {
+                usersToDisplay.forEach(user => {
+                    const statusText = user.online ? `<span class="text-[#25D366] font-medium">Online</span>` : `<span class="text-gray-500 dark:text-gray-400">${formatLastSeen(user.lastSeen)}</span>`;
+                    const count = unreadCounts[user.uid] || 0;
+                    userList.appendChild(createChatListItem({ ...user, statusText, unreadCount: count }));
+                });
             }
         }
 
-        searchButton.addEventListener('click', performSearch);
-        userSearchInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                performSearch();
-            }
-        });
+        userSearchInput.addEventListener('input', renderVisibleUserList);
 
         function createChatListItem(userData) {
             const item = document.createElement('div');
@@ -510,11 +467,7 @@
             messageInput.disabled = false;
             sendButton.disabled = false;
             
-            if (userSearchInput.value.trim() === '') {
-                listenToChatList();
-            } else {
-                performSearch();
-            }
+            renderVisibleUserList();
             
             if (partnerId === 'public-chat') {
                 chatPartnerStatus.textContent = 'Everyone is here';
@@ -669,7 +622,7 @@
             messageInput.disabled = true;
             sendButton.disabled = true;
 
-            listenToChatList();
+            renderVisibleUserList();
         });
 
         // Start the application

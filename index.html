@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FalconixTalk</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow: hidden; /* Prevent body scroll */
+        }
+        /* Custom scrollbar for chat messages */
+        .chat-messages::-webkit-scrollbar {
+            width: 8px;
+        }
+        .chat-messages::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        .chat-messages::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        /* Custom scrollbar for chat list */
+        .chat-list::-webkit-scrollbar {
+            width: 8px;
+        }
+        .chat-list::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        .chat-list::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        .chat-list::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        /* Loading spinner styles */
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #25D366;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Responsive adjustments for smaller screens */
+        @media (max-width: 767px) {
+            #app-container .md\\:flex {
+                flex-direction: column; /* Stack sidebar and chat area vertically */
+            }
+            #app-container .w-1\\/3 {
+                width: 100%; /* Sidebar takes full width on small screens */
+                height: 50%; /* Adjust height as needed, or make it collapsible */
+                border-right: none; /* Remove right border */
+                border-bottom: 1px solid #d1d5db; /* Add bottom border */
+            }
+            #app-container .md\\:w-2\\/3 {
+                width: 100%; /* Chat area takes full width on small screens */
+                height: 50%; /* Adjust height as needed */
+            }
+            /* Hide sidebar on small screens by default, show chat area */
+            #app-container .md\\:flex > div:first-child {
+                display: none; /* Hide sidebar */
+            }
+            #app-container.chat-active .md\\:flex > div:first-child {
+                display: flex; /* Show sidebar when chat-active class is present */
+            }
+            #app-container.chat-active .md\\:flex > div:last-child {
+                display: none; /* Hide chat area when sidebar is shown */
+            }
+            /* Ensure chat area is always visible if no specific chat is selected */
+            #app-container:not(.chat-active) .md\\:flex > div:last-child {
+                display: flex;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 h-screen flex items-center justify-center">
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="fixed inset-0 bg-white bg-opacity-75 flex items-center justify-center z-50">
+        <div class="spinner"></div>
+        <p class="ml-4 text-lg text-gray-700">Loading...</p>
+    </div>
+
+    <!-- Login/OTP Screen -->
+    <div id="auth-container" class="bg-white p-8 rounded-lg shadow-xl max-w-md w-full text-center">
+        <h2 class="text-2xl font-bold mb-6 text-green-600">Login to FalconixTalk</h2>
+        
+        <!-- Phone Number Login Section -->
+        <div class="mb-4">
+            <input type="tel" id="phone-number-input" placeholder="Enter phone number (e.g., +11234567890)"
+                   class="w-full p-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500">
+        </div>
+        <div id="recaptcha-container" class="mb-4 flex justify-center"></div>
+        <button id="send-otp-button"
+                class="w-full bg-green-500 hover:bg-green-600 text-white p-3 rounded-md font-semibold transition duration-300 ease-in-out transform hover:scale-105">
+            Send OTP
+        </button>
+
+        <div id="otp-section" class="mt-6 hidden">
+            <div class="mb-4">
+                <input type="text" id="otp-input" placeholder="Enter OTP"
+                       class="w-full p-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500">
+            </div>
+            <button id="verify-otp-button"
+                    class="w-full bg-green-500 hover:bg-green-600 text-white p-3 rounded-md font-semibold transition duration-300 ease-in-out transform hover:scale-105">
+                Verify OTP
+            </button>
+        </div>
+
+        <div class="my-6 text-gray-500">OR</div>
+
+        <!-- Google Sign-In Button -->
+        <button id="google-sign-in-button"
+                class="w-full bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-md font-semibold flex items-center justify-center transition duration-300 ease-in-out transform hover:scale-105">
+            <svg class="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12.24 10.285V11.69h4.293c-.083.486-.31.887-.697 1.25-.388.363-.88.62-1.476.777l-1.63 1.26c-1.02.79-2.288 1.25-3.69 1.25-2.822 0-5.207-1.92-5.99-4.502H3.96c.86 2.09 2.536 3.73 4.67 4.67 2.134.94 4.54.94 6.674 0l1.63-1.26c.596-.157 1.088-.414 1.476-.777.387-.363.614-.764.697-1.25V10.285h-4.293zM12 4c1.365 0 2.61.46 3.63 1.23l2.87-2.87C16.29 2.51 14.19 2 12 2 8.78 2 5.86 3.24 3.96 5.33l1.83 1.42C6.46 4.92 8.94 4 12 4z"/>
+            </svg>
+            Sign in with Google
+        </button>
+
+        <p id="auth-message" class="mt-4 text-red-500 text-sm"></p>
+    </div>
+
+    <!-- Main FalconixTalk Container -->
+    <div id="app-container" class="hidden flex w-full h-full max-w-7xl max-h-[95vh] bg-white shadow-lg rounded-lg overflow-hidden md:flex">
+        <!-- Sidebar (User List) - Hidden on small screens, shown on medium and larger -->
+        <div class="w-full md:w-1/3 bg-gray-200 border-r border-gray-300 flex flex-col">
+            <div class="p-4 bg-green-600 text-white flex items-center justify-between rounded-tl-lg">
+                <h1 class="text-xl font-semibold">FalconixTalk</h1>
+                <div class="flex items-center space-x-3">
+                    <span class="text-sm font-medium">User ID: <span id="user-id-display"></span></span>
+                    <button id="logout-button" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md text-sm">Logout</button>
+                </div>
+            </div>
+            <div class="p-4 border-b border-gray-300">
+                <input type="text" id="user-search-input" placeholder="Search by phone number or name" class="w-full p-2 rounded-md bg-white border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500">
+            </div>
+            <!-- User List / Search Results -->
+            <div id="user-list" class="flex-grow overflow-y-auto chat-list">
+                <!-- Public Chat always visible -->
+                <div class="p-4 border-b border-gray-300 bg-green-100 cursor-pointer hover:bg-green-200" data-user-id="public-chat">
+                    <div class="font-semibold text-gray-800">Public Chat</div>
+                    <div class="text-sm text-gray-600">Chat with everyone!</div>
+                </div>
+                <!-- Other users/search results will be loaded here -->
+            </div>
+        </div>
+
+        <!-- Main Chat Area -->
+        <div class="flex-grow flex flex-col w-full md:w-2/3">
+            <!-- Chat Header -->
+            <div class="p-4 bg-green-600 text-white flex items-center border-b border-gray-300 rounded-tr-lg">
+                <h2 id="chat-header-name" class="text-lg font-semibold">Select a Chat</h2>
+            </div>
+
+            <!-- Messages Display Area -->
+            <div id="messages-container" class="flex-grow p-4 overflow-y-auto bg-green-50 chat-messages flex flex-col-reverse">
+                <!-- Messages will be appended here by JavaScript -->
+            </div>
+
+            <!-- Message Input Area -->
+            <div class="p-4 bg-gray-100 border-t border-gray-300 flex items-center rounded-br-lg">
+                <input type="text" id="message-input" placeholder="Type a message..." class="flex-grow p-3 rounded-full bg-white border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 mr-2" disabled>
+                <button id="send-button" class="bg-green-500 hover:bg-green-600 text-white p-3 rounded-full shadow-md transition duration-300 ease-in-out transform hover:scale-105" disabled>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        // Import only the necessary core Firebase modules
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
+        import { getAuth, RecaptchaVerifier, signInWithPhoneNumber, onAuthStateChanged, signOut, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
+        import { getFirestore, collection, addDoc, query, where, onSnapshot, serverTimestamp, setDoc, doc, getDoc, getDocs } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
+
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyCVwo7WrXXr9UfGGB2PuMkb7BUpRTHYFdw",
+            authDomain: "falconixtalk.firebaseapp.com",
+            projectId: "falconixtalk",
+            storageBucket: "falconixtalk.firebasestorage.app",
+            messagingSenderId: "47917184525",
+            appId: "1:47917184525:web:489538a823b2ce50e98744",
+            measurementId: "G-GGQCH7PTCE"
+        };
+
+        // App ID derived from the provided firebaseConfig
+        const appId = firebaseConfig.projectId; // Using projectId as appId for consistency with Firestore paths
+
+        let app;
+        let db;
+        let auth;
+        let userId = null;
+        let phoneNumber = null; // Store user's phone number
+        let email = null; // Store user's email if logged in via Google
+        let isAuthReady = false;
+        let confirmationResult = null; // Used for OTP verification
+        let selectedChatPartnerId = 'public-chat'; // Default to public chat
+        let selectedChatPartnerPhoneNumber = 'Public Chat'; // Default for display
+        let selectedChatPartnerEmail = null; // Default for display
+        let unsubscribeMessages = null; // To unsubscribe from previous chat listener
+        let allUsers = []; // Cache all users for search functionality
+
+        // DOM Elements
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const authContainer = document.getElementById('auth-container');
+        const appContainer = document.getElementById('app-container');
+        const phoneNumberInput = document.getElementById('phone-number-input');
+        const recaptchaContainer = document.getElementById('recaptcha-container');
+        const sendOtpButton = document.getElementById('send-otp-button');
+        const otpSection = document.getElementById('otp-section');
+        const otpInput = document.getElementById('otp-input');
+        const verifyOtpButton = document.getElementById('verify-otp-button');
+        const googleSignInButton = document.getElementById('google-sign-in-button');
+        const authMessage = document.getElementById('auth-message');
+        const messagesContainer = document.getElementById('messages-container');
+        const messageInput = document.getElementById('message-input');
+        const sendButton = document.getElementById('send-button');
+        const userIdDisplay = document.getElementById('user-id-display');
+        const userList = document.getElementById('user-list');
+        const chatHeaderName = document.getElementById('chat-header-name');
+        const logoutButton = document.getElementById('logout-button');
+        const userSearchInput = document.getElementById('user-search-input');
+
+        // Function to show a custom message box (instead of alert)
+        function showMessageBox(message, type = 'info') {
+            const messageBox = document.createElement('div');
+            messageBox.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]';
+            const bgColor = type === 'error' ? 'bg-red-500' : 'bg-green-500';
+            messageBox.innerHTML = `
+                <div class="bg-white p-6 rounded-lg shadow-xl max-w-sm text-center">
+                    <p class="text-lg font-semibold mb-4 ${type === 'error' ? 'text-red-700' : 'text-gray-800'}">${message}</p>
+                    <button id="message-box-ok" class="${bgColor} hover:opacity-80 text-white px-4 py-2 rounded-md">OK</button>
+                </div>
+            `;
+            document.body.appendChild(messageBox);
+
+            document.getElementById('message-box-ok').onclick = () => {
+                document.body.removeChild(messageBox);
+            };
+        }
+
+        // Initialize Firebase and set up authentication
+        async function initializeFirebase() {
+            try {
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                // Set default country code for phone number input
+                if (phoneNumberInput.value === '' || phoneNumberInput.value === '+') {
+                    phoneNumberInput.value = '+91';
+                }
+
+                // Setup reCAPTCHA Verifier for phone auth
+                window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+                    'size': 'invisible',
+                    'callback': (response) => {
+                        // reCAPTCHA solved
+                    },
+                    'expired-callback': () => {
+                        authMessage.textContent = 'reCAPTCHA expired. Please try again.';
+                        sendOtpButton.disabled = false;
+                    }
+                });
+                window.recaptchaVerifier.render(); // Call render after initialization
+
+                // Listen for auth state changes
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        phoneNumber = user.phoneNumber; // Will be null if logged in via Google
+                        email = user.email; // Will be null if logged in via phone
+                        userIdDisplay.textContent = userId.substring(0, 8) + '...';
+                        isAuthReady = true;
+                        authContainer.classList.add('hidden');
+                        appContainer.classList.remove('hidden');
+                        loadingOverlay.classList.add('hidden');
+
+                        // Save user details to Firestore if not already present
+                        const userDocRef = doc(db, `artifacts/${appId}/users/${userId}`);
+                        const userDocSnap = await getDoc(userDocRef);
+                        if (!userDocSnap.exists()) {
+                            await setDoc(userDocRef, {
+                                uid: userId,
+                                phoneNumber: phoneNumber,
+                                email: email, // Store email if available
+                                createdAt: serverTimestamp()
+                            });
+                        }
+                        
+                        await loadUsers(); // Load all users for the sidebar and caching
+                        // Initial chat selection (e.g., public chat or first contact)
+                        selectChat('public-chat', 'Public Chat');
+
+                    } else {
+                        userId = null;
+                        phoneNumber = null;
+                        email = null;
+                        userIdDisplay.textContent = 'Not Authenticated';
+                        isAuthReady = false;
+                        loadingOverlay.classList.add('hidden');
+                        appContainer.classList.add('hidden');
+                        authContainer.classList.remove('hidden');
+                        otpSection.classList.add('hidden');
+                        authMessage.textContent = '';
+                        messageInput.disabled = true;
+                        sendButton.disabled = true;
+                        if (unsubscribeMessages) {
+                            unsubscribeMessages();
+                        }
+                        messagesContainer.innerHTML = '';
+                    }
+                });
+
+            } catch (error) {
+                console.error("Error initializing Firebase:", error);
+                showMessageBox(`Failed to initialize Firebase: ${error.message}`, 'error');
+                loadingOverlay.classList.add('hidden');
+            }
+        }
+
+        // Send OTP
+        sendOtpButton.addEventListener('click', async () => {
+            const phoneNum = phoneNumberInput.value.trim();
+            if (!phoneNum) {
+                authMessage.textContent = 'Please enter a phone number.';
+                return;
+            }
+            authMessage.textContent = '';
+            sendOtpButton.disabled = true;
+            loadingOverlay.classList.remove('hidden');
+
+            try {
+                if (!window.recaptchaVerifier) {
+                    showMessageBox("reCAPTCHA not initialized. Please refresh the page.", 'error');
+                    sendOtpButton.disabled = false;
+                    loadingOverlay.classList.add('hidden');
+                    return;
+                }
+                
+                confirmationResult = await signInWithPhoneNumber(auth, phoneNum, window.recaptchaVerifier);
+                otpSection.classList.remove('hidden');
+                authMessage.textContent = 'OTP sent successfully!';
+            } catch (error) {
+                console.error("Error sending OTP:", error);
+                authMessage.textContent = `Error sending OTP: ${error.message}`;
+                showMessageBox(`Error sending OTP: ${error.message}`, 'error');
+            } finally {
+                sendOtpButton.disabled = false;
+                loadingOverlay.classList.add('hidden');
+            }
+        });
+
+        // Verify OTP
+        verifyOtpButton.addEventListener('click', async () => {
+            const otpCode = otpInput.value.trim();
+            if (!otpCode) {
+                authMessage.textContent = 'Please enter the OTP.';
+                return;
+            }
+            authMessage.textContent = '';
+            verifyOtpButton.disabled = true;
+            loadingOverlay.classList.remove('hidden');
+
+            try {
+                if (confirmationResult) {
+                    await confirmationResult.confirm(otpCode);
+                    // User is signed in, onAuthStateChanged listener will handle UI update
+                } else {
+                    authMessage.textContent = 'No confirmation result found. Please send OTP first.';
+                }
+            } catch (error) {
+                console.error("Error verifying OTP:", error);
+                authMessage.textContent = `Error verifying OTP: ${error.message}`;
+                showMessageBox(`Error verifying OTP: ${error.message}`, 'error');
+            } finally {
+                verifyOtpButton.disabled = false;
+                loadingOverlay.classList.add('hidden');
+            }
+        });
+
+        // Google Sign-In
+        googleSignInButton.addEventListener('click', async () => {
+            authMessage.textContent = '';
+            loadingOverlay.classList.remove('hidden');
+            try {
+                const provider = new GoogleAuthProvider();
+                await signInWithPopup(auth, provider);
+                // User is signed in, onAuthStateChanged listener will handle UI update
+            } catch (error) {
+                console.error("Error signing in with Google:", error);
+                authMessage.textContent = `Error signing in with Google: ${error.message}`;
+                showMessageBox(`Error signing in with Google: ${error.message}`, 'error');
+            } finally {
+                loadingOverlay.classList.add('hidden');
+            }
+        });
+
+        // Logout
+        logoutButton.addEventListener('click', async () => {
+            try {
+                await signOut(auth);
+                showMessageBox("Logged out successfully.");
+            } catch (error) {
+                console.error("Error logging out:", error);
+                showMessageBox(`Error logging out: ${error.message}`, 'error');
+            }
+        });
+
+        // Function to display a message in the chat
+        function displayMessage(messageData) {
+            const messageElement = document.createElement('div');
+            const isSender = messageData.senderId === userId;
+            const messageClass = isSender ? 'bg-green-200 self-end' : 'bg-white self-start';
+            const textColor = isSender ? 'text-gray-800' : 'text-gray-700';
+            
+            let senderDisplayName;
+            if (isSender) {
+                senderDisplayName = 'You';
+            } else {
+                // Display partner's phone number or email, or truncated UID
+                senderDisplayName = messageData.senderPhoneNumber || messageData.senderEmail || `User: ${messageData.senderId.substring(0, 8)}...`;
+            }
+
+            const timestamp = messageData.timestamp ? new Date(messageData.timestamp.toDate()).toLocaleString() : 'Just now';
+
+            messageElement.className = `max-w-[70%] p-3 my-1 rounded-xl shadow-sm ${messageClass} ${textColor}`;
+            messageElement.innerHTML = `
+                <div class="font-semibold text-xs mb-1 ${isSender ? 'text-right' : 'text-left'}">${senderDisplayName}</div>
+                <p class="break-words">${messageData.text}</p>
+                <div class="text-right text-xs text-gray-500 mt-1">${timestamp}</div>
+            `;
+            messagesContainer.prepend(messageElement); // Prepend to show latest at bottom (due to flex-col-reverse)
+        }
+
+        // Load all users for the sidebar and cache them
+        async function loadUsers() {
+            if (!db || !userId) return;
+
+            userList.innerHTML = `
+                <div class="p-4 border-b border-gray-300 bg-green-100 cursor-pointer hover:bg-green-200" data-user-id="public-chat">
+                    <div class="font-semibold text-gray-800">Public Chat</div>
+                    <div class="text-sm text-gray-600">Chat with everyone!</div>
+                </div>
+            `; // Clear and re-add public chat
+
+            try {
+                const usersRef = collection(db, `artifacts/${appId}/users`);
+                const q = query(usersRef);
+                const querySnapshot = await getDocs(q);
+                allUsers = []; // Clear previous cache
+                querySnapshot.forEach((doc) => {
+                    const userData = doc.data();
+                    if (userData.uid !== userId) { // Don't list self
+                        allUsers.push(userData);
+                    }
+                });
+                displayUsers(allUsers); // Display all loaded users initially
+            } catch (error) {
+                console.error("Error loading users:", error);
+                showMessageBox(`Error loading users: ${error.message}`, 'error');
+            }
+        }
+
+        // Display users in the sidebar (can be filtered list)
+        function displayUsers(usersToDisplay) {
+            // Remove all user elements except the public chat
+            const publicChatElement = userList.querySelector('[data-user-id="public-chat"]');
+            userList.innerHTML = '';
+            userList.appendChild(publicChatElement);
+
+            if (usersToDisplay.length === 0 && userSearchInput.value.trim() !== '') {
+                // If no users found for search, show invite option
+                const inviteIdentifier = userSearchInput.value.trim();
+                const inviteElement = document.createElement('div');
+                inviteElement.className = 'p-4 border-b border-gray-300 bg-yellow-100 cursor-pointer hover:bg-yellow-200 flex items-center justify-between';
+                inviteElement.innerHTML = `
+                    <div>
+                        <div class="font-semibold text-gray-800">No user found for "${inviteIdentifier}"</div>
+                        <div class="text-sm text-gray-600">Invite them to FalconixTalk!</div>
+                    </div>
+                    <button class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-md text-sm" data-invite-identifier="${inviteIdentifier}">Invite via SMS</button>
+                `;
+                userList.appendChild(inviteElement);
+                inviteElement.querySelector('button').addEventListener('click', (e) => {
+                    const identifierToInvite = e.target.getAttribute('data-invite-identifier');
+                    inviteUser(identifierToInvite);
+                });
+            } else {
+                usersToDisplay.forEach((userData) => {
+                    const userElement = document.createElement('div');
+                    userElement.className = 'p-4 border-b border-gray-300 bg-white cursor-pointer hover:bg-gray-100';
+                    userElement.setAttribute('data-user-id', userData.uid);
+                    userElement.setAttribute('data-phone-number', userData.phoneNumber || '');
+                    userElement.setAttribute('data-email', userData.email || '');
+                    
+                    let displayName = userData.phoneNumber || userData.email || `User: ${userData.uid.substring(0, 8)}...`;
+
+                    userElement.innerHTML = `
+                        <div class="font-semibold text-gray-800">${displayName}</div>
+                        <div class="text-sm text-gray-600">Click to chat</div>
+                    `;
+                    userElement.addEventListener('click', () => {
+                        selectChat(userData.uid, displayName, userData.phoneNumber, userData.email);
+                    });
+                    userList.appendChild(userElement);
+                });
+            }
+        }
+
+        // Search users by phone number or email
+        userSearchInput.addEventListener('input', () => {
+            const searchTerm = userSearchInput.value.trim().toLowerCase();
+            if (searchTerm === '') {
+                displayUsers(allUsers); // Show all users if search box is empty
+                return;
+            }
+
+            const filteredUsers = allUsers.filter(user =>
+                (user.phoneNumber && user.phoneNumber.toLowerCase().includes(searchTerm)) ||
+                (user.email && user.email.toLowerCase().includes(searchTerm))
+            );
+            displayUsers(filteredUsers);
+        });
+
+        // Function to invite a user via SMS
+        function inviteUser(identifier) {
+            // Assuming the identifier is a phone number for SMS invites
+            const message = encodeURIComponent(`Join me on FalconixTalk! Download the app here: [Your App Link Here]`); // Replace with your actual app link
+            window.location.href = `sms:${identifier}?body=${message}`;
+        }
+
+        // Select a chat (public or personal)
+        function selectChat(partnerId, partnerName, partnerPhoneNumber = null, partnerEmail = null) {
+            if (unsubscribeMessages) {
+                unsubscribeMessages(); // Unsubscribe from previous chat listener
+            }
+            messagesContainer.innerHTML = ''; // Clear messages from previous chat
+            selectedChatPartnerId = partnerId;
+            selectedChatPartnerPhoneNumber = partnerPhoneNumber; // Store for display
+            selectedChatPartnerEmail = partnerEmail; // Store for display
+            chatHeaderName.textContent = partnerName;
+            messageInput.disabled = false;
+            sendButton.disabled = false;
+            setupRealtimeMessages(); // Set up new listener for the selected chat
+        }
+
+        // Set up real-time listener for messages
+        function setupRealtimeMessages() {
+            if (!isAuthReady || !db || !userId) {
+                console.warn("Firebase not ready or user not authenticated for message listener.");
+                return;
+            }
+
+            const messagesRef = collection(db, `artifacts/${appId}/public/data/messages`);
+
+            let q;
+            if (selectedChatPartnerId === 'public-chat') {
+                q = query(messagesRef, where('receiverId', 'in', [null, 'public-chat']));
+            } else {
+                // For personal chats, we fetch all messages and filter client-side.
+                // This is a simplification for demo purposes. For large-scale apps,
+                // consider a different Firestore structure (e.g., chat rooms with subcollections)
+                // to optimize queries and avoid reading unnecessary data.
+                q = query(messagesRef);
+            }
+
+            unsubscribeMessages = onSnapshot(q, (snapshot) => {
+                messagesContainer.innerHTML = ''; // Clear all messages before re-rendering
+                const allMessages = [];
+                snapshot.forEach((doc) => {
+                    const messageData = doc.data();
+                    if (selectedChatPartnerId !== 'public-chat') {
+                        const isPersonalMessage = 
+                            (messageData.senderId === userId && messageData.receiverId === selectedChatPartnerId) ||
+                            (messageData.senderId === selectedChatPartnerId && messageData.receiverId === userId);
+                        if (isPersonalMessage) {
+                            allMessages.push({ id: doc.id, ...messageData });
+                        }
+                    } else {
+                        const isPublicMessage = messageData.receiverId === null || messageData.receiverId === 'public-chat';
+                        if (isPublicMessage) {
+                            allMessages.push({ id: doc.id, ...messageData });
+                        }
+                    }
+                });
+
+                allMessages.sort((a, b) => {
+                    if (!a.timestamp || !b.timestamp) return 0;
+                    return a.timestamp.toDate().getTime() - b.timestamp.toDate().getTime();
+                });
+
+                allMessages.forEach(msg => displayMessage(msg));
+
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }, (error) => {
+                console.error("Error listening to messages:", error);
+                showMessageBox(`Error loading messages: ${error.message}`, 'error');
+            });
+        }
+
+        // Send message function
+        async function sendMessage() {
+            if (!isAuthReady || !userId || !selectedChatPartnerId) {
+                showMessageBox("Please wait for authentication and select a chat before sending messages.");
+                return;
+            }
+
+            const messageText = messageInput.value.trim();
+            if (messageText === "") {
+                showMessageBox("Message cannot be empty.");
+                return;
+            }
+
+            try {
+                await addDoc(collection(db, `artifacts/${appId}/public/data/messages`), {
+                    senderId: userId,
+                    senderPhoneNumber: phoneNumber, // Will be null if Google login
+                    senderEmail: email, // Will be null if phone login
+                    receiverId: selectedChatPartnerId === 'public-chat' ? null : selectedChatPartnerId,
+                    text: messageText,
+                    timestamp: serverTimestamp()
+                });
+                messageInput.value = '';
+            } catch (error) {
+                console.error("Error sending message:", error);
+                showMessageBox(`Failed to send message: ${error.message}`, 'error');
+            }
+        }
+
+        // Event listeners
+        sendButton.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // Initialize Firebase on window load
+        window.onload = initializeFirebase;
+    </script>
+</body>
+</html>

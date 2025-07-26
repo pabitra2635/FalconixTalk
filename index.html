@@ -227,39 +227,7 @@
         // You MUST update your rules in the Firebase Console for messaging to work.
         // Go to Firestore -> Rules, delete everything, and paste this:
         /*
-        rules_version = '2';
-        service cloud.firestore {
-          match /databases/{database}/documents {
-            // Allow any logged-in user to read the public list of all users
-            match /artifacts/{appId}/users/{userId} {
-              allow read: if request.auth != null;
-              // Only a user can write to their own main profile document
-              allow write: if request.auth.uid == userId;
-            }
 
-            // Allow any logged-in user to create or update a chat entry in ANY user's list.
-            // This is required so a sender can add themselves to the receiver's chat list.
-            match /artifacts/{appId}/users/{userId}/chats/{partnerId} {
-              allow read, write: if request.auth != null;
-            }
-
-            // Allow any logged-in user to update the unread count in ANY user's list.
-            // This is required so the sender can notify the receiver of a new message.
-            match /artifacts/{appId}/users/{userId}/unreadCounts/{partnerId} {
-              allow read, write: if request.auth != null;
-            }
-
-            // Allow any logged-in user to send messages in the public chat
-            match /artifacts/{appId}/public/data/messages/{messageId} {
-                allow read, write: if request.auth != null;
-            }
-
-            // Allow only the two participants of a private chat to read or write messages
-            match /chats/{chatId}/{document=**} {
-              allow read, write: if request.auth.uid in chatId.split('_');
-            }
-          }
-        }
         */
 
         // Global variables
@@ -410,9 +378,15 @@
 
         // --- User & Chat Management ---
         async function fetchAllUsersForSearch() {
-            const usersRef = collection(db, `artifacts/${appId}/users`);
-            const snapshot = await getDocs(query(usersRef));
-            allUsersCache = snapshot.docs.map(doc => doc.data()).filter(u => u.uid !== userId);
+            try {
+                const usersRef = collection(db, `artifacts/${appId}/users`);
+                const snapshot = await getDocs(query(usersRef));
+                allUsersCache = snapshot.docs.map(doc => doc.data()).filter(u => u.uid !== userId);
+                console.log(`Successfully fetched and cached ${allUsersCache.length} users for searching.`);
+            } catch (error) {
+                console.error("Error fetching users for search cache:", error);
+                showMessageBox("Could not load user list for searching. Please check your connection or app permissions.", "error");
+            }
         }
         
         function listenToUnreadCounts() {
@@ -477,7 +451,11 @@
             }
         }
 
-        function performSearch() {
+        async function performSearch() {
+            if (allUsersCache.length === 0) {
+                console.log("User cache is empty. Attempting to re-fetch before searching...");
+                await fetchAllUsersForSearch();
+            }
             const searchTerm = userSearchInput.value.trim().toLowerCase();
             if (searchTerm === '') {
                 listenToChatList();

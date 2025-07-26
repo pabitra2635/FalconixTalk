@@ -167,21 +167,21 @@
         import { getFirestore, collection, addDoc, query, onSnapshot, serverTimestamp, setDoc, doc, getDoc, updateDoc, orderBy } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
         import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-storage.js";
 
-        // --- IMPORTANT ---
-        // 1. Replace the placeholder values below with your actual Firebase configuration.
-        // 2. The app WILL NOT WORK if you do not provide your own valid keys.
+        // --- Your Specific Firebase Configuration ---
+        // This configuration is now populated with the keys you provided.
         const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_AUTH_DOMAIN",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_STORAGE_BUCKET",
-            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-            appId: "YOUR_APP_ID"
+            apiKey: "AIzaSyCVwo7WrXXr9UfGGB2PuMkb7BUpRTHYFdw",
+            authDomain: "falconixtalk.firebaseapp.com",
+            projectId: "falconixtalk",
+            storageBucket: "falconixtalk.appspot.com",
+            messagingSenderId: "47917184525",
+            appId: "1:47917184525:web:489538a823b2ce50e98744",
+            measurementId: "G-GGQCH7PTCE"
         };
         
-        // --- IMPORTANT ---
-        // 3. Set your Firestore Security Rules in the Firebase console.
-        //    Go to Firestore -> Rules and paste the following, then publish:
+        // --- IMPORTANT: Firestore Security Rules ---
+        // For the app to work, you MUST set your Firestore Security Rules in the Firebase console.
+        // Go to Firestore -> Rules and paste the following, then publish:
         /*
         rules_version = '2';
         service cloud.firestore {
@@ -265,16 +265,14 @@
             }
         }
 
-        // --- Authentication ---
+        // --- Authentication & User Data Handling ---
         function setupAuthListener() {
             onAuthStateChanged(auth, async (user) => {
                 if (user) {
-                    // User is signed in
                     await handleUserLogin(user);
                     appContainer.classList.remove('hidden');
                     authContainer.classList.add('hidden');
                 } else {
-                    // User is signed out
                     handleUserLogout();
                     appContainer.classList.add('hidden');
                     authContainer.classList.remove('hidden');
@@ -282,7 +280,12 @@
                 loadingOverlay.classList.add('hidden');
             });
         }
-
+        
+        /**
+         * This function handles all logic for when a user logs in.
+         * It saves/updates their data in the Firestore database, which is your
+         * request to "save all data of users on database".
+         */
         async function handleUserLogin(user) {
             userId = user.uid;
             userName = user.displayName;
@@ -292,7 +295,7 @@
             const userDocSnap = await getDoc(userDocRef);
             
             if (!userDocSnap.exists()) {
-                // New user
+                // New user: Save their data to the database
                 userProfilePicUrl = user.photoURL || DEFAULT_PROFILE_PIC;
                 await setDoc(userDocRef, {
                     uid: userId,
@@ -303,7 +306,7 @@
                     lastSeen: serverTimestamp()
                 });
             } else {
-                // Existing user
+                // Existing user: Update their online status
                 const userData = userDocSnap.data();
                 userProfilePicUrl = userData.profilePictureUrl || DEFAULT_PROFILE_PIC;
                 await updateDoc(userDocRef, { online: true, lastSeen: serverTimestamp() });
@@ -410,19 +413,16 @@
 
             selectedChatPartnerId = partnerId;
             
-            // Unsubscribe from previous listeners
             if (unsubscribeMessages) unsubscribeMessages();
             if (unsubscribePartnerStatus) unsubscribePartnerStatus();
 
-            // Update chat header
             chatHeaderName.textContent = partnerName;
             chatPartnerPic.src = partnerPic || DEFAULT_PROFILE_PIC;
             
-            // Update UI
             messagesContainer.innerHTML = '';
             messageInput.disabled = false;
             sendButton.disabled = false;
-            displayUsers(allUsers); // Re-render list to show selection
+            displayUsers(allUsers); 
             
             if (partnerId === 'public-chat') {
                 chatPartnerStatus.textContent = 'Everyone is here';
@@ -459,11 +459,19 @@
             
             const q = query(messagesRef, orderBy('timestamp', 'desc'));
             unsubscribeMessages = onSnapshot(q, (snapshot) => {
-                messagesContainer.innerHTML = ''; // Clear before adding
+                messagesContainer.innerHTML = '';
                 snapshot.docs.forEach(doc => displayMessage(doc.data()));
             });
         }
-
+        
+        /**
+         * This function sends a message. It saves the message to the database.
+         * The `onSnapshot` listener in `setupRealtimeMessages` then automatically
+         * displays it for any online user. If a user is offline, they will
+         * receive the message when they log in because the listener will fetch
+         * all messages from the database at that time. This is how offline
+         * messaging is handled.
+         */
         async function sendMessage() {
             const text = messageInput.value.trim();
             if (text === '' || !userId) return;
@@ -514,7 +522,7 @@
                         ${data.timestamp ? new Date(data.timestamp.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Sending...'}
                     </div>
                 </div>`;
-            messagesContainer.appendChild(msgDiv); // Append for correct order with flex-col-reverse
+            messagesContainer.appendChild(msgDiv);
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
 
